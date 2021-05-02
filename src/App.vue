@@ -9,8 +9,8 @@
           toggle-class="nav-link-custom"
           right
       >
-        <b-dropdown-item  href="/predict-time-series/" onclick="this.selected = 1"  v-bind:class="{active : isSelected(1)}">Time Series Classifiers</b-dropdown-item>
-        <b-dropdown-item href="/adult-income/"  onclick="this.selected = 2" v-bind:class="{active : isSelected(2)}" >Adult Income</b-dropdown-item>
+        <b-dropdown-item  href="/predict-time-series/" onclick="this.selected = 1"  v-bind:class="{active : isSelected(1)}">My Time Series Classifiers</b-dropdown-item>
+        <b-dropdown-item href="/adult-income/"  onclick="this.selected = 2" v-bind:class="{active : isSelected(2)}" >Adult Income Prediction Model</b-dropdown-item>
 
 
 

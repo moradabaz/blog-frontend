@@ -1979,6 +1979,6 @@ ax[1].set_title("Accuracy score")
 
 Apparently the Random Forest Classifier is the best compared to the rest due the time Gradient Boosting needs to perform the training and testing with a 81.36% accuracy. 
 
-If you want to try this model, you can click in this [link](http://localhost:8080/adult-income/) where you can interact a little bit with the deployed model. 
+If you want to try this model, you can click in this [link](/adult-income/) where you can interact a little bit with the deployed model. 
 
 **Did you like this exercise? Do you want to find new datasets to train your skill as a data scientist or a machin learning engineer?** I highly recommend [Kaggle](https://www.kaggle.com/) where you can find a lot of datasets, create your own notebooks, participate in paid challenges (Sweet money, oh yeah) and, of course, see other highly professional data scientists notebooks and how they solve machine learning problems. Thanks for visiting this post and see you around ;)
