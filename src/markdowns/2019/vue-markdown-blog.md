@@ -70,7 +70,7 @@ At this point, we've verified that our Vue project can now understand and render
 ```javascript
 import Vue from 'vue'
 import Router from 'vue-router'
-import Home from './views/Home.vue'
+import Home from './views/HomeBlog.vue'
 import Foo from './components/foo.md'
 
 Vue.use(Router)
@@ -99,7 +99,7 @@ We'll have to change the way we register our route components a bit. We'll have 
 ```javascript
 import Vue from 'vue'
 import Router from 'vue-router'
-import Home from './views/Home.vue'
+import Home from './views/HomeBlog.vue'
 import Blogs from './statics/blogs.json'
 
 Vue.use(Router)
@@ -195,7 +195,7 @@ The last thing we need to do is to adjust `router.js`. What it does is basically
 ```javascript
 import Vue from 'vue'
 import Router from 'vue-router'
-import Home from './views/Home.vue'
+import Home from './views/HomeBlog.vue'
 
 Vue.use(Router)
 
