@@ -84,12 +84,13 @@ For all of them we'ved performed a crossvaliation to detect the best hyperparame
   * Smoothing: 1e-09
 
 
+
     
 ![png](./img/adult-income/output_271_1.png)
     
 
 
-Our results concluded that the Random Forest Classifier is the best compared to the rest due the time Gradient Boosting needs to perform the training and testing with a 81.36% accuracy. 
+Our results concluded that the Random Forest Classifier is the best compared to the rest due the time Gradient Boosting needs to perform the training and testing with a 81.36% accuracy.
 
 **If you want to read the whole report, please click [here](https://www.kaggle.com/moradisten/adult-income-prediction-and-data-exploration) to get to the Kaggle notebook.
 If you want to try this model, you can click in this [link](http://localhost:8080/adult-income/) where you can interact a little bit with the deployed model.** 
