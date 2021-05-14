@@ -1,7 +1,7 @@
 <template>
   <div class="blog">
     <router-view />
-    <router-link to="/" tag="a" class="back">&laquo; Back</router-link>
+    <router-link to="/blog" tag="a" class="back">&laquo; Back</router-link>
   </div>
 </template>
 <style lang="scss" scoped>
@@ -25,6 +25,21 @@
     }
   }
   /deep/ {
+    h3 {
+      color: rgba(2, 2, 61, 0.95);
+      font-family:  Helvetica, sans-serif;
+      font-style: normal;
+      font-weight: 100;
+      font-size: 30px;
+    }
+
+    p {
+      font-size: 18px;
+      font-family:  Helvetica Neue, sans-serif;
+      margin-top: .4rem;
+      margin-bottom: 4rem;
+    }
+
     h1 {
       font-size: 3rem;
       margin-bottom: .2rem;

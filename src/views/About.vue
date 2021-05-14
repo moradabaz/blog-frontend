@@ -4,7 +4,7 @@
     <b-container class="bv-example-row">
       <b-row class="text-center">
         <b-col></b-col>
-        <b-col cols="10">
+        <b-col cols="10" align-self="center">
           <h2 class="headline center">{Hello}</h2>
           <img alt="Vue logo" src="../assets/avatar.png">
           <br>
@@ -12,14 +12,27 @@
           <h5>Do you trust Software over Humans? I do</h5>
           <br>
           <br>
+          <h3> Hello Friends</h3>
           <p>
-            Hi everyone, my name is Morad and I’m just another Software Engineer who likes to share content related to computer Science and coding stuff.
+            Hi everyone, my name is <b>Morad</b> and I’m just another Software Engineer who likes to share content related to computer Science and coding stuff.
             I like to discover new things in the tech world, do some personal research in some fields and try new tools.
             In this website I post some of the things I discovered and experienced during my studies and current job. Being a programmer is not a big deal, maybe in the past you needed a degree to start to get the necessary skill, but now with technology and the internet, there a lot of free bootcamps and courses where you can start learning from scratch.
             In this website I post stuff that I hope it’s helpful to some of you, especially if you are in college or you want to enter this programmer community.
           </p>
-          <p><strong>Why did I decide to choose the coding path?</strong></p>
-          <p>Well, there are a lot of answers for this question, but the thing I like the most in Computer Programming is that can build something completely new and powerful only at home and with a laptop, and that gives you a lot of power if you want to be a freelance make money with your apps or if you want to be altruistic, you can create something that can help others.
+          <br>
+          <b-img align="center" :src="require('../assets/img/photo.jpg')" style="width: 640px; height: 480px;"/>
+          <br>
+          <h3>A little bit about me</h3>
+          <b-row>
+            <p>
+              I studied Computer Science in the University of Murcia, in Spain and I currently work here as a Software Engineer
+              <strong>Why did I decide to choose the coding path?</strong>
+              <br>
+              Well, there are a lot of answers for this question, but the thing I like the most in Computer Programming is that can build something completely new and powerful only at home and with a laptop,
+              and that gives you a lot of power if you want to be a freelance make money with your apps or if you want to be altruistic, you can create something that can help others.
+              If you want to see some of my posts, please check this page <a href="/blog">right here</a><br />
+            </p>
+          </b-row>
 
           If you want to see some of my posts, please check this page <a href="/">right here</a><br />
             If you want to check out some of my projects, take a look at my <a href="https://pages.github.com/moradisten">GitHub account </a>
@@ -80,7 +93,11 @@ h3 {
 }
 
 p {
+  font-size: 18px;
+  font-family:  Helvetica Neue, sans-serif;
   margin-top: .4rem;
+  margin-bottom: 4rem;
+
 }
 
 .sections {

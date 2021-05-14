@@ -6,71 +6,93 @@
     </b-row>
     <br>
     <br>
+    <h3>Hi Everyone</h3>
     <br>
-    <h3>A little bit about me</h3>
-    <b-row>
-      <p>
-        Hi everyone, my name is Morad and I’m just another Software Engineer who likes to share content related to computer Science and coding stuff.
-        I like to discover new things in the tech world, do some personal research in some fields and try new tools.
-        In this website I post some of the things I discovered and experienced during my studies and current job. Being a programmer is not a big deal, maybe in the past you needed a degree to start to get the necessary skill, but now with technology and the internet, there a lot of free bootcamps and courses where you can start learning from scratch.
-        In this website I post stuff that I hope it’s helpful to some of you, especially if you are in college or you want to enter this programmer community.
-        <br>
-        <br>
-        <strong>Why did I decide to choose the coding path?</strong>
-        <br>
-        Well, there are a lot of answers for this question, but the thing I like the most in Computer Programming is that can build something completely new and powerful only at home and with a laptop,
-        and that gives you a lot of power if you want to be a freelance make money with your apps or if you want to be altruistic, you can create something that can help others.
-        If you want to see some of my posts, please check this page <a href="/blog">right here</a><br />
-      </p>
-    </b-row>
+    <p>
+      Hi everyone, my name is <b>Morad</b> and I’m just another Software Engineer who likes to share content related to computer Science and coding stuff.
+      I hope you enjoy my website :)
+    </p>
     <h3>My Blog</h3>
     <br>
+
     <b-container>
       <b-col>
+        <b-carousel
+            id="carousel-1"
+            v-model="slide"
+            :interval="4000"
+            controls
+            indicators
+            background="#ababab"
+            img-width="1024"
+            img-height="480"
+            style="text-shadow: 1px 1px 2px #333; cursor: pointer;"
+            @sliding-start="onSlideStart"
+            @sliding-end="onSlideEnd"
 
-        <b-card
-            title="Card Title"
-            img-src="https://picsum.photos/600/300/?image=25"
-            img-alt="Image"
-            img-left
-            tag="article"
-            class="mb-2"
         >
-          <b-card-text>
-            Some quick example text to build on the card title and make up the bulk of the card's content.
-          </b-card-text>
+          <div v-for="(section, index) in Object.keys(entries)" :key="index" class="group">
+            <div class="section" v-for="entry in entries[section]" :key="entry.id">
+              <div class="entry" v-on:click="$router.push({name: entry.id})">
+                <b-carousel-slide
+                    :text="entry.description"
+                    :img-src="entry.imgpath"
+                ></b-carousel-slide>
+              </div>
+            </div>
+          </div>
+        </b-carousel>
+        <br>
+        <div class="mb-3">
+          <b-button block variant="info" href="/blog/">More Posts here</b-button>
+        </div>
+        <br>
+        <br>
 
 
-          <b-button href="#" variant="primary">Go somewhere</b-button>
 
+        <b-carousel>
 
-        </b-card>
-
+        </b-carousel>
 
       </b-col>
     </b-container>
 
   </b-container>
 
-  <!--
-  <b-container class="bv-example-row">
-    <b-row   fluid="sm">
-      <b-col>
-        <h2> My Blog</h2>
-      </b-col>
-      <b-col>2 of 3</b-col>
-      <b-col>3 of 3</b-col>
-    </b-row>
-  </b-container>-->
+
 </template>
 
 <script>
-import { mdbBadge } from 'mdbvue';
 
 export default {
   name: "Home",
-  components: {
-    mdbBadge
+  computed: {
+    entries() {
+
+      return {
+        stories: [
+          {
+            id: "2021-04-06-adult-income",
+            title: "Data Science Exercise: Predition Models with Python",
+            description: "We want to predict if a person earns more than 50.000$ by doing a supervised Learning exercise and data exploration. In this post, we have used Python for Data Science and deployed our model.",
+            imgpath : require('../assets/img/blogs/adult-income.jpeg')
+          },
+          {
+            id: "2021-04-04-statistical-learning-rstudio",
+            title: "Data Science with Rstudio: Let's do an exercise",
+            description: "A Simple Supervised Learning exercise using Rstudio to predict the british vote of the 2002 elections",
+            imgpath : require('../assets/img/blogs/rstudio.png')
+          },
+          {
+            id: "2021-04-01-introduction-to-c",
+            title: "Introduction to C Language",
+            description: "A brief introduction to C Language for beginners who still don't know nothing about the most hated and loved language",
+            imgpath : require('../assets/img/blogs/c-programming.png')
+          }
+        ]
+      }
+    }
   }
 }
 </script>
@@ -83,10 +105,16 @@ img {
 }
 
 h1 {
-  color: rgba(2, 2, 61, 0.57);
+  color: rgba(41, 196, 80, 0.57);
   font-family:  HelvetHelvetica Neueica, sans-serif;
   font-weight: 100;
   font-size: 50px;
+}
+
+h5 {
+  font-family:  Helvetica Neue, sans-serif;
+  margin-top: .12rem;
+  margin-bottom: 4rem;
 }
 
 h3 {
@@ -102,5 +130,17 @@ p {
   font-family:  Helvetica Neue, sans-serif;
   margin-top: .4rem;
   margin-bottom: 4rem;
+
 }
+
+.card-group .card {
+  max-width: 25%;
+}
+.card-img-top {
+  width: 100%;
+  height: 40vh;
+  object-fit: cover;
+}
+
+
 </style>
