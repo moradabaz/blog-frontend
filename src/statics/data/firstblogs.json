@@ -1,0 +1,22 @@
+{
+  "stories": [
+    {
+      "id": "2021-04-06-adult-income",
+      "title": "Data Science Exercise: Predition Models with Python",
+      "description": "We want to predict if a person earns more than 50.000$ by doing a supervised Learning exercise and data exploration. In this post, we have used Python for Data Science and deployed our model.",
+      "img": "../assets/img/blogs/rstudio.png"
+    },
+    {
+      "id": "2021-04-04-statistical-learning-rstudio",
+      "title": "Data Science with Rstudio: Let's do an exercise",
+      "description": "A Simple Supervised Learning exercise using Rstudio to predict the british vote of the 2002 elections",
+      "img": "../assets/img/blogs/rstudio.png"
+    },
+    {
+      "id": "2021-04-01-introduction-to-c",
+      "title": "Introduction to C Language",
+      "description": "A brief introduction to C Language for beginners who still don't know nothing about the most hated and loved language",
+      "img": "../assets/img/blogs/rstudio.png"
+    }
+    ]
+  }

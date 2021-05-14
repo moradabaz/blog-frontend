@@ -1,7 +1,9 @@
 <template>
   <div id="app">
     <b-nav pills class="nav nav-tabs justify-content-end" style="margin-right: 30px; margin-bottom: 20px">
-      <b-nav-item href="/" onclick="this.selected = 0" v-bind:class="{active : isSelected(0)}" >Blog</b-nav-item>
+      <b-nav-item href="/" onclick="this.selected = 0" v-bind:class="{active : isSelected(0)}" >Home</b-nav-item>
+      <b-nav-item></b-nav-item>
+      <b-nav-item href="/blog" onclick="this.selected = 0" v-bind:class="{active : isSelected(0)}" >Blog</b-nav-item>
       <b-nav-item></b-nav-item>
       <b-nav-item-dropdown
           id="my-nav-dropdown"

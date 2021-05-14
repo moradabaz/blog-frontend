@@ -4,7 +4,8 @@
       "id": "vue-markdown-blog",
       "date": "March 18, 2019",
       "title": "Creating a Simple Blog using Vue + Markdown",
-      "description": "Simple and neat way to add a blogging feature to add on your website."
+      "description": "Simple and neat way to add a blogging feature to add on your website.",
+      "image": "education"
     }
   ],
   "stories": [
@@ -12,25 +13,29 @@
       "id": "2021-04-06-adult-income",
       "date": "April 6, 2021",
       "title": "Data Science Exercise: Predition Models with Python",
-      "description": "In this post we are going to do a data science exercise, with python, which consists in the data exploration and models comparison to predict whether a person is earning more than 50.000$ a year. We will use a `.csv` dataset in which every row correponds to an adult and the columns correspond to their attributes. Our main goal is to determine if a person, based on some of the personal information, is likely to be have a good income or not..."
+      "description": "In this post we are going to do a data science exercise, with python, which consists in the data exploration and models comparison to predict whether a person is earning more than 50.000$ a year.",
+      "image": "projects"
     },
     {
       "id": "2021-04-04-statistical-learning-rstudio",
       "date": "April 4, 2021",
       "title": "Data Science with Rstudio: Let's do an exercise",
-      "description": "In a hole there lived a tender, silver dragon named Jack Butterscotch. Not an enchanted red, stripy hole, filled with flamingos and a cold smell, nor yet a short, hairy, skinny hole with nothing in it to sit down on or to eat: it was a dragon-hole, and that means happiness..."
-    },
-    {
-      "id": "2021-04-01-introduction-to-c",
-      "date": "April 1, 2021",
-      "title": "Introduction to C Language",
-      "description": "This might be one the most hated languages by standard developers due to its tedious requirements needed to build something, let alone when you have to debug something, it's really horrible. You get errors and bugs and you have no idea of where they come from and sometimes you have to create your own data structures when programming languages like Java or Python already offer you a lot of tools to treat and manage data. But let's be honest, this language is mandatory for every programmer who is starting their career. It's the core and mother syntax of the most used programming languages..."
+      "description": "A Simple Supervised Learning exercise using Rstudio to predict the british vote of the 2002 election.",
+      "image": "reserch"
     },
     {
       "id": "2021-04-02-introduction-to-c-2",
       "date": "April 2, 2021",
       "title": "Basic Introduction to C: Structs, Pointers and Dynamic Memory",
-      "description": "In this post we are going to take a look at some of the main particularities C language offers and often make developers run away, escape, shut down their computers and go to see the sunset. We saw some of the basics in C language, but now we are going to move on and have a look at the main properties of C. Let's keep in mind this is mid-level language, so there sometimes interactions with hardware, such as the stack."
+      "description": "A brief introduction of the particularities C language offers and often make developers run away, escape, shut down their computers and go to see the sunset.",
+      "image": "education"
+    },
+    {
+      "id": "2021-04-01-introduction-to-c",
+      "date": "April 1, 2021",
+      "title": "Introduction to C Language",
+      "description": "A brief introduction into C Language Syntax and create your first 'Hello World' program",
+      "image": "education"
     }
   ]
 }

@@ -151,8 +151,10 @@
   <h6>Hey family, If you want to read my blog post about how we created this prediction model, please click on this <a href="/stories/2021-04-06-adult-income">link</a></h6>
   <br>
   <br>
+  <b> The prediction task is to determine whether a person makes over $50K a year.</b>
+  <br>
   <p>This data was extracted from the <a href="https://www.census.gov/en.html"> 1994 Census bureau database </a>by Ronny Kohavi and Barry Becker (Data Mining and Visualization, Silicon Graphics). A set of reasonably clean records was extracted using the following conditions:
-    <code> ((AAGE>16) && (AGI>100) && (AFNLWGT>1) && (HRSWK>0))</code>. <b> The prediction task is to determine whether a person makes over $50K a year.</b></p>
+    <code> ((AAGE>16) && (AGI>100) && (AFNLWGT>1) && (HRSWK>0))</code>.</p>
   <br>
   <br>
 </div>

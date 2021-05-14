@@ -1,10 +1,11 @@
 import Vue from 'vue'
 import Router from 'vue-router'
-import Home from './views/Home.vue'
+import HomeBlog from './views/HomeBlog.vue'
 import ModelCreationForm from './views/ModelCreationForm'
 import ModelPredictionForm from "./views/ModelPredictionForm";
 import About from './views/About'
 import AdultIncome from "./components/AdultIncome";
+import Home from './views/Home'
 
 Vue.use(Router)
 
@@ -32,8 +33,13 @@ export default new Router({
   routes: [
     {
       path: '/',
-      name: 'home',
+      name: 'Home',
       component: Home
+    },
+    {
+      path: '/blog',
+      name: 'homeBlog',
+      component: HomeBlog
     },
     {
       path: '/predict-time-series/',
