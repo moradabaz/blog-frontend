@@ -5,7 +5,6 @@ import BlogCard from '../components/BlogCard.astro';
 import { fetchMediumPosts } from '../lib/medium';
 import { getCollection } from 'astro:content';
 
-const baseUrl = import.meta.env.BASE_URL;
 const mediumPosts = await fetchMediumPosts();
 const localPosts = await getCollection('blog');
 const sortedLocalPosts = localPosts.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
@@ -51,7 +50,7 @@ const sortedLocalPosts = localPosts.sort((a, b) => b.data.pubDate.valueOf() - a.
           <h2>Latest Stories on <span class="gradient-text">Medium</span></h2>
           <p class="section-subtitle">Real-world production engineering challenges and Lakehouse insights</p>
         </div>
-        <a href={`${baseUrl}medium`.replace(/\/\//g, '/')} class="btn btn-secondary btn-sm">View All Stories →</a>
+        <a href="/medium" class="btn btn-secondary btn-sm">View All Stories →</a>
       </div>
 
       <div class="cards-grid">
@@ -71,7 +70,7 @@ const sortedLocalPosts = localPosts.sort((a, b) => b.data.pubDate.valueOf() - a.
           <h2>Featured <span class="gradient-text-alt">Technical Notes</span></h2>
           <p class="section-subtitle">Data Science exercises, ML algorithms & C programming notes</p>
         </div>
-        <a href={`${baseUrl}blog`.replace(/\/\//g, '/')} class="btn btn-secondary btn-sm">Browse Archive →</a>
+        <a href="/blog" class="btn btn-secondary btn-sm">Browse Archive →</a>
       </div>
 
       <div class="cards-grid">
@@ -92,7 +91,7 @@ const sortedLocalPosts = localPosts.sort((a, b) => b.data.pubDate.valueOf() - a.
             I'm a Data Engineer working with Spark, Iceberg, and dbt on AWS. As the sole DE at a SaaS company, I maintain a Lakehouse platform with dozens of AWS Glue jobs. Most of my day-to-day is diagnosing performance issues in Spark pipelines and understanding how Apache Iceberg behaves under production conditions.
           </p>
           <div class="bio-links">
-            <a href={`${baseUrl}about`.replace(/\/\//g, '/')} class="btn btn-secondary btn-sm">Read Full About</a>
+            <a href="/about" class="btn btn-secondary btn-sm">Read Full About</a>
             <a href="https://www.linkedin.com/in/morad-abbou-azaz/" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">LinkedIn Profile</a>
             <a href="https://github.com/moradisten" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">GitHub</a>
           </div>

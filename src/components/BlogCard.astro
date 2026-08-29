@@ -6,8 +6,7 @@ interface Props {
 }
 
 const { post } = Astro.props;
-const baseUrl = import.meta.env.BASE_URL;
-const postUrl = `${baseUrl}blog/${post.slug}`.replace(/\/\//g, '/');
+const postUrl = `/blog/${post.slug}`;
 
 const formattedDate = post.data.pubDate.toLocaleDateString('en-US', {
   year: 'numeric',
