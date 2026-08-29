@@ -1,0 +1,109 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout 
+  title="About Me | Morad Abaz" 
+  description="About Morad Abaz - Software Engineer from Murcia, Spain, writing about computer science, data science, LLMs, and programming."
+>
+  <div class="container page-container">
+    <div class="about-grid">
+      <div class="about-main">
+        <div class="badge badge-purple" style="margin-bottom: 0.8rem;">Profile</div>
+        <h1>About <span class="gradient-text">Morad Abaz</span></h1>
+        
+        <div class="glass-card about-card prose">
+          <p class="lead">
+            Hi everyone, my name is <strong>Morad</strong>. I’m a Software Engineer passionate about Computer Science, systems architecture, data engineering, and AI.
+          </p>
+
+          <p>
+            I studied Computer Science at the <strong>University of Murcia</strong> in Spain and currently work as a Software Engineer. 
+            I love discovering new tools in the tech ecosystem, performing personal research in LLMs and Semantic Layers, and sharing what I learn along the way.
+          </p>
+
+          <h3>Why Coding & Technical Writing?</h3>
+          <p>
+            What I love most about programming is the ability to build powerful, world-changing tools from anywhere with just a laptop. 
+            Teaching and writing articles is my way of cementing knowledge and giving back to the developer community.
+          </p>
+
+          <h3>What I Write About</h3>
+          <ul>
+            <li><strong>Medium Technical Series</strong>: LLMs SQL hallucination benchmarks, Semantic Layer architecture, dbt, Debezium CDC, and stream processing with Flink.</li>
+            <li><strong>Data Science & Machine Learning</strong>: Python notebooks, classification algorithms, Pandas, Scikit-Learn, and RStudio models.</li>
+            <li><strong>Systems & C Fundamentals</strong>: Low-level C programming, memory management, pointers, and data structures.</li>
+          </ul>
+
+          <div class="social-links-box">
+            <h4>Connect with me</h4>
+            <div class="social-buttons">
+              <a href="https://medium.com/@moradabaz" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">
+                Medium (@moradabaz)
+              </a>
+              <a href="https://github.com/moradisten" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">
+                GitHub (@moradisten)
+              </a>
+              <a href="https://www.instagram.com/random.coding/" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">
+                Instagram (@random.coding)
+              </a>
+              <a href="mailto:moradabaz@gmail.com" class="btn btn-primary">
+                Send Email
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .page-container {
+    padding-top: 4rem;
+    padding-bottom: 5rem;
+  }
+
+  .about-grid {
+    max-width: 860px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    margin-bottom: 1.8rem;
+  }
+
+  .about-card {
+    padding: 3rem;
+  }
+
+  .lead {
+    font-size: 1.25rem;
+    color: var(--text-main);
+    line-height: 1.7;
+    margin-bottom: 1.6rem;
+  }
+
+  .social-links-box {
+    margin-top: 2.5rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border-color);
+  }
+
+  .social-links-box h4 {
+    margin-bottom: 1.2rem;
+    color: var(--text-main);
+  }
+
+  .social-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  @media (max-width: 768px) {
+    .about-card {
+      padding: 1.6rem;
+    }
+  }
+</style>

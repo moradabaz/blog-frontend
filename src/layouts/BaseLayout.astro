@@ -1,0 +1,59 @@
+---
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+  canonicalUrl?: string;
+  image?: string;
+}
+
+const {
+  title = 'Morad Abaz | Software Engineer & Data Tech Writer',
+  description = 'Personal blog of Morad Abaz, featuring articles on Software Engineering, Data Science, System Architecture, LLMs, and Medium stories.',
+  canonicalUrl = Astro.url.href,
+  image = '/images/og-banner.png'
+} = Astro.props;
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{title}</title>
+  <meta name="description" content={description} />
+  <link rel="canonical" href={canonicalUrl} />
+  
+  <!-- OpenGraph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content={Astro.url.href} />
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={description} />
+  <meta property="og:image" content={new URL(image, Astro.url)} />
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:url" content={Astro.url.href} />
+  <meta property="twitter:title" content={title} />
+  <meta property="twitter:description" content={description} />
+  <meta property="twitter:image" content={new URL(image, Astro.url)} />
+
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+</head>
+<body>
+  <Header />
+  <main class="main-content">
+    <slot />
+  </main>
+  <Footer />
+</body>
+</html>
+
+<style>
+  .main-content {
+    flex-grow: 1;
+  }
+</style>

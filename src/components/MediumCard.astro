@@ -1,0 +1,130 @@
+---
+import type { MediumPost } from '../lib/medium';
+
+interface Props {
+  post: MediumPost;
+}
+
+const { post } = Astro.props;
+---
+
+<article class="glass-card medium-card">
+  <div class="card-content">
+    <div class="card-header">
+      <div class="card-badges">
+        <span class="badge badge-medium">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M13.54 12a6.8 6.8 0 01-6.77 6.82A6.8 6.8 0 010 12a6.8 6.8 0 016.77-6.82A6.8 6.8 0 0113.54 12zM20.96 12c0 3.54-1.51 6.42-3.38 6.42-1.87 0-3.39-2.88-3.39-6.42s1.52-6.42 3.39-6.42c1.87 0 3.38 2.88 3.38 6.42M24 12c0 3.17-.53 5.75-1.19 5.75-.66 0-1.19-2.58-1.19-5.75s.53-5.75 1.19-5.75C23.47 6.25 24 8.83 24 12z"/>
+          </svg>
+          Medium Story
+        </span>
+        {post.categories.slice(0, 2).map((cat: string) => (
+          <span class="badge">{cat}</span>
+        ))}
+      </div>
+      <span class="card-date">{post.formattedDate}</span>
+    </div>
+
+    <h3 class="card-title">
+      <a href={post.link} target="_blank" rel="noopener noreferrer">
+        {post.title}
+      </a>
+    </h3>
+
+    <p class="card-snippet">{post.snippet}</p>
+
+    <div class="card-footer">
+      <a 
+        href={post.link} 
+        target="_blank" 
+        rel="noopener noreferrer" 
+        class="read-more"
+      >
+        Read on Medium
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/>
+        </svg>
+      </a>
+    </div>
+  </div>
+</article>
+
+<style>
+  .medium-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .card-content {
+    padding: 1.6rem;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+  }
+
+  .card-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .card-date {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+  }
+
+  .card-title {
+    margin-bottom: 0.8rem;
+    font-size: 1.2rem;
+    line-height: 1.4;
+  }
+
+  .card-title a {
+    color: var(--text-main);
+    transition: color 0.2s ease;
+  }
+
+  .card-title a:hover {
+    color: var(--accent-cyan);
+  }
+
+  .card-snippet {
+    color: var(--text-muted);
+    font-size: 0.92rem;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+    flex-grow: 1;
+  }
+
+  .card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .read-more {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #facc15;
+    transition: transform 0.2s ease;
+  }
+
+  .read-more:hover {
+    transform: translateX(4px);
+  }
+</style>

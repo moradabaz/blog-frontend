@@ -1,66 +1,22 @@
 {
-  "name": "blog-vue-markdown",
-  "version": "0.1.0",
+  "name": "moradabaz-blog",
+  "version": "2.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "serve": "vue-cli-service serve",
-    "build": "vue-cli-service build",
-    "lint": "vue-cli-service lint",
-    "start": "node server.js"
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
   },
   "dependencies": {
-    "@vuesax/button": "^0.1.0",
-    "axios": "^0.21.1",
-    "bootstrap": "^4.6.0",
-    "bootstrap-vue": "^2.21.2",
-    "connect-history-api-fallback": "^1.6.0",
-    "express": "^4.17.1",
-    "swap": "0.0.3",
-    "sweetalert": "^2.1.2",
-    "vue": "^2.6.12",
-    "vue-dialog-loading": "^0.5.3",
-    "vue-loading-button": "^0.2.0",
-    "vue-loading-overlay": "^4.0.1",
-    "vue-router": "^3.5.1",
-    "vue2-form-loading": "^0.1.0",
-    "vuesax": "^3.12.2",
-    "vuetify": "^2.4.11",
-    "webpack-cli": "^4.6.0"
+    "@astrojs/rss": "^4.0.11",
+    "@astrojs/sitemap": "^3.2.1",
+    "astro": "^5.3.0",
+    "fast-xml-parser": "^4.5.1"
   },
   "devDependencies": {
-    "@vue/cli-plugin-babel": "^3.4.0",
-    "@vue/cli-plugin-eslint": "^3.4.0",
-    "@vue/cli-service": "^3.4.0",
-    "babel-eslint": "^10.0.1",
-    "eslint": "^5.8.0",
-    "eslint-plugin-vue": "^5.0.0",
-    "node-sass": "^4.13.1",
-    "sass-loader": "^7.1.0",
-    "vue-markdown-loader": "^2.4.1",
-    "vue-template-compiler": "^2.5.21"
-  },
-  "eslintConfig": {
-    "root": true,
-    "env": {
-      "node": true
-    },
-    "extends": [
-      "plugin:vue/essential",
-      "eslint:recommended"
-    ],
-    "rules": {},
-    "parserOptions": {
-      "parser": "babel-eslint"
-    }
-  },
-  "postcss": {
-    "plugins": {
-      "autoprefixer": {}
-    }
-  },
-  "browserslist": [
-    "> 1%",
-    "last 2 versions",
-    "not ie <= 8"
-  ]
+    "typescript": "^5.7.3"
+  }
 }
