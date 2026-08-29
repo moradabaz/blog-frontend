@@ -5,6 +5,9 @@ import sitemap from '@astrojs/sitemap';
 export default defineConfig({
   site: 'https://moradabaz.github.io',
   base: '/',
+  build: {
+    assets: 'assets'
+  },
   integrations: [sitemap()],
   markdown: {
     shikiConfig: {
