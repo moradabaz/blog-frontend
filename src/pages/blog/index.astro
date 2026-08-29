@@ -5,24 +5,57 @@ import { getCollection } from 'astro:content';
 
 const posts = await getCollection('blog');
 const sortedPosts = posts.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+// Collect all unique tags across all posts
+const allTags = ['All', ...Array.from(new Set(sortedPosts.flatMap(p => p.data.tags))).sort()];
+
+// Serialize posts data for client-side filtering
+const postsData = sortedPosts.map(p => ({
+  slug: p.slug,
+  tags: p.data.tags
+}));
 ---
 
 <BaseLayout 
   title="Articles & Tutorials | Morad Abaz" 
-  description="Technical articles, computer science tutorials, data science exercises, C language fundamentals, and software engineering notes by Morad Abaz."
+  description="Technical articles on Spark, Iceberg, dbt, Data Engineering, Python, and more."
 >
   <div class="container page-container">
     <div class="page-header">
       <div class="badge badge-purple" style="margin-bottom: 0.8rem;">Articles Archive</div>
       <h1>Articles & <span class="gradient-text-alt">Code Tutorials</span></h1>
       <p class="page-subtitle">
-        Explore articles on Data Science, Machine Learning models, C language syntax, and software development fundamentals.
+        Guides and notes on Data Engineering, Spark, Iceberg, Python, and more.
       </p>
     </div>
 
-    <div class="cards-grid">
+    <!-- Tag Filter Bar -->
+    <div class="filter-bar" id="filterBar">
+      {allTags.map(tag => (
+        <button
+          class:list={['filter-btn', { active: tag === 'All' }]}
+          data-tag={tag}
+          id={`filter-${tag.toLowerCase().replace(/\s+/g, '-')}`}
+        >
+          {tag}
+        </button>
+      ))}
+    </div>
+
+    <!-- No results message -->
+    <p class="no-results" id="noResults" style="display:none;">
+      No articles found for this tag yet.
+    </p>
+
+    <!-- Cards Grid -->
+    <div class="cards-grid" id="cardsGrid">
       {sortedPosts.map(post => (
-        <BlogCard post={post} />
+        <div
+          class="card-wrapper"
+          data-tags={JSON.stringify(post.data.tags)}
+        >
+          <BlogCard post={post} />
+        </div>
       ))}
     </div>
   </div>
@@ -30,28 +63,113 @@ const sortedPosts = posts.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDa
 
 <style>
   .page-container {
-    padding-top: 4rem;
+    padding-top: 3.5rem;
     padding-bottom: 5rem;
   }
 
   .page-header {
-    margin-bottom: 3.5rem;
+    margin-bottom: 2rem;
     max-width: 780px;
   }
 
   .page-header h1 {
-    margin-bottom: 1rem;
+    margin-bottom: 0.6rem;
   }
 
   .page-subtitle {
-    font-size: 1.1rem;
+    font-size: 1rem;
     color: var(--text-muted);
     line-height: 1.7;
   }
 
+  /* Filter bar */
+  .filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 2.25rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .filter-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.3rem 0.85rem;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--border-color);
+    background: #ffffff;
+    color: var(--text-muted);
+    font-size: 0.84rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: var(--font-sans);
+  }
+
+  .filter-btn:hover {
+    border-color: var(--accent-blue);
+    color: var(--accent-blue);
+    background: #e0f2fe;
+  }
+
+  .filter-btn.active {
+    background: var(--accent-blue);
+    border-color: var(--accent-blue);
+    color: #ffffff;
+  }
+
+  .no-results {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    margin-bottom: 1rem;
+    padding: 2rem 0;
+    text-align: center;
+  }
+
   .cards-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-    gap: 2rem;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.4rem;
+  }
+
+  .card-wrapper {
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+
+  .card-wrapper.hidden {
+    display: none;
   }
 </style>
+
+<script>
+  const filterBar = document.getElementById('filterBar');
+  const cardsGrid = document.getElementById('cardsGrid');
+  const noResults = document.getElementById('noResults');
+
+  if (filterBar && cardsGrid && noResults) {
+    filterBar.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest('.filter-btn') as HTMLElement | null;
+      if (!btn) return;
+
+      const selectedTag = btn.dataset.tag ?? 'All';
+
+      // Update active button
+      filterBar.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      // Filter cards
+      const wrappers = cardsGrid.querySelectorAll<HTMLElement>('.card-wrapper');
+      let visible = 0;
+
+      wrappers.forEach(wrapper => {
+        const tags: string[] = JSON.parse(wrapper.dataset.tags ?? '[]');
+        const show = selectedTag === 'All' || tags.includes(selectedTag);
+        wrapper.classList.toggle('hidden', !show);
+        if (show) visible++;
+      });
+
+      noResults.style.display = visible === 0 ? 'block' : 'none';
+    });
+  }
+</script>
