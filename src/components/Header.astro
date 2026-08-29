@@ -1,9 +1,11 @@
 ---
+const baseUrl = import.meta.env.BASE_URL;
+
 const navLinks = [
-  { name: 'Home', href: '/' },
-  { name: 'Medium Series', href: '/medium' },
-  { name: 'Articles & Code', href: '/blog' },
-  { name: 'About', href: '/about' }
+  { name: 'Home', href: baseUrl },
+  { name: 'Medium Series', href: `${baseUrl}medium`.replace(/\/\//g, '/') },
+  { name: 'Articles & Code', href: `${baseUrl}blog`.replace(/\/\//g, '/') },
+  { name: 'About', href: `${baseUrl}about`.replace(/\/\//g, '/') }
 ];
 
 const currentPath = Astro.url.pathname;
@@ -11,14 +13,14 @@ const currentPath = Astro.url.pathname;
 
 <header class="header">
   <div class="container header-container">
-    <a href="/" class="logo">
+    <a href={baseUrl} class="logo">
       <span class="logo-symbol">&lt;/&gt;</span>
       <span class="logo-text">Morad<span class="gradient-text">.dev</span></span>
     </a>
 
     <nav class="nav">
       {navLinks.map(link => {
-        const isActive = currentPath === link.href || (link.href !== '/' && currentPath.startsWith(link.href));
+        const isActive = currentPath === link.href || (link.href !== baseUrl && currentPath.startsWith(link.href));
         return (
           <a 
             href={link.href} 

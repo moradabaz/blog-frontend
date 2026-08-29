@@ -5,6 +5,7 @@ import BlogCard from '../components/BlogCard.astro';
 import { fetchMediumPosts } from '../lib/medium';
 import { getCollection } from 'astro:content';
 
+const baseUrl = import.meta.env.BASE_URL;
 const mediumPosts = await fetchMediumPosts();
 const localPosts = await getCollection('blog');
 const sortedLocalPosts = localPosts.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
@@ -34,7 +35,7 @@ const sortedLocalPosts = localPosts.sort((a, b) => b.data.pubDate.valueOf() - a.
             <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/>
           </svg>
         </a>
-        <a href="/blog" class="btn btn-secondary">
+        <a href={`${baseUrl}blog`.replace(/\/\//g, '/')} class="btn btn-secondary">
           Read Local Articles
         </a>
       </div>
@@ -50,7 +51,7 @@ const sortedLocalPosts = localPosts.sort((a, b) => b.data.pubDate.valueOf() - a.
           <h2>Latest Stories on <span class="gradient-text">Medium</span></h2>
           <p class="section-subtitle">Synced automatically from my Medium feed (@moradabaz)</p>
         </div>
-        <a href="/medium" class="btn btn-secondary btn-sm">View All Series →</a>
+        <a href={`${baseUrl}medium`.replace(/\/\//g, '/')} class="btn btn-secondary btn-sm">View All Series →</a>
       </div>
 
       <div class="cards-grid">
@@ -70,7 +71,7 @@ const sortedLocalPosts = localPosts.sort((a, b) => b.data.pubDate.valueOf() - a.
           <h2>Featured <span class="gradient-text-alt">Technical Posts</span></h2>
           <p class="section-subtitle">Data Science exercises, C fundamentals & tutorials</p>
         </div>
-        <a href="/blog" class="btn btn-secondary btn-sm">Explore All Articles →</a>
+        <a href={`${baseUrl}blog`.replace(/\/\//g, '/')} class="btn btn-secondary btn-sm">Explore All Articles →</a>
       </div>
 
       <div class="cards-grid">
@@ -91,7 +92,7 @@ const sortedLocalPosts = localPosts.sort((a, b) => b.data.pubDate.valueOf() - a.
             I studied Computer Science at the University of Murcia (Spain) and work as a Software Engineer. I love crafting high-performance systems, delving into LLMs, data engineering pipelines, and helping fellow developers grow.
           </p>
           <div class="bio-links">
-            <a href="/about" class="btn btn-secondary btn-sm">Read Full Story</a>
+            <a href={`${baseUrl}about`.replace(/\/\//g, '/')} class="btn btn-secondary btn-sm">Read Full Story</a>
             <a href="https://github.com/moradisten" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">GitHub Profile</a>
           </div>
         </div>
