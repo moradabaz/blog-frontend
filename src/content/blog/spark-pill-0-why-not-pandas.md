@@ -9,11 +9,11 @@ tags: ["Spark", "Pandas", "Distributed Computing", "MapReduce", "Hadoop", "Data 
 
 > **This is Pill 0** of a series for junior data engineers and data scientists who can run PySpark jobs but don't understand what happens underneath. Each pill starts from a real question.
 
-Have you ever wondered why you can't just load an 80GB file with `pd.read_csv()` and call it a day? You do it with a 200MB CSV, run `groupby('country').sum()`, and it works in 3 seconds. Same code, bigger file, laptop freezes. Why?
+***Have you ever wondered why you can't just load an 80GB file with `pd.read_csv()` and call it a day? You do it with a 200MB CSV, run `groupby('country').sum()`, and it works in 3 seconds. Same code, bigger file, laptop freezes. Why?***
 
-Pandas loads the entire CSV into a single Python process, all at once. 80GB into 16GB of RAM won't work.
+*Pandas loads the entire CSV into a single Python process, all at once. 80GB into 16GB of RAM won't work.*
 
-But have you thought about the follow-up question?
+*But have you thought about the follow-up question?*
 
 > "My Spark cluster has 3 nodes with 16GB each. That's 48GB total. The data is 80GB. It still doesn't fit. So how does Spark handle it?"
 
