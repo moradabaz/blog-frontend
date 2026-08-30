@@ -215,6 +215,6 @@ In the next pill we will open the MapReduce box and look at what happens in each
 
 ---
 
-> **Next: [Pill 1 Quiz: MapReduce Fundamentals](/pills/quiz-mapreduce)**
+> **Next: [Pill 1 Quiz: MapReduce Fundamentals](/pills/quiz-pill-1)**
 >
 > **Series: Spark Pills.** Reinforcement notes for data engineers who can run jobs but want to understand the internals. Born from real production questions.
