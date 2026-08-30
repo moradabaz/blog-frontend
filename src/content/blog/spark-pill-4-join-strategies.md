@@ -1,5 +1,5 @@
 ---
-title: "Spark Pill 4: Broadcast or Sort-Merge? And What Is Bucketing?"
+title: "Spark Pill 4: The Computer Science behind Broadcast or Sort-Merge Joins"
 description: "Have you ever wondered why one join finishes in 30 seconds and another identical-looking join takes 90 minutes? The answer lies in which join strategy Spark picks, and whether you can eliminate the shuffle entirely."
 pubDate: 2026-08-30
 author: "Morad Abaz"

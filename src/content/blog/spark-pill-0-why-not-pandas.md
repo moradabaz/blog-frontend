@@ -1,6 +1,6 @@
 ---
-title: "Spark Pill 0: If PySpark Looks Like Pandas... Why Can't We Just Use Pandas?"
-description: "Have you ever wondered why you can't just load 80GB into Pandas? And if Spark only has 48GB of RAM total, why doesn't it crash too? First pill in a series for data engineers who want to understand the internals."
+title: "Spark Pill 0: Why Spark isn't Pandas"
+description: "Have you ever wondered why you can't just load 80GB into Pandas? And if Spark only has 48GB of RAM total, why doesn't it crash too? This is question a lot us had as Junior Data Engineer. In this pill post We are going to see What Spark is about"
 pubDate: 2026-08-30
 author: "Morad Abaz"
 category: "Spark Pills"

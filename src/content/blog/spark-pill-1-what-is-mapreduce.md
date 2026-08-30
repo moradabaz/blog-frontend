@@ -1,5 +1,5 @@
 ---
-title: "Spark Pill 1: What Is MapReduce and Why Does Spark Still Use It?"
+title: "Spark Pill 1: What The Hell Is MapReduce and Why Does Spark Still Use It?"
 description: "Have you ever wondered what actually happens when Spark moves data between machines? Let's open the MapReduce box and see who the mappers and reducers really are."
 pubDate: 2026-08-30
 author: "Morad Abaz"

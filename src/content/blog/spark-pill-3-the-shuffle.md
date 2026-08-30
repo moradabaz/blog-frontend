@@ -1,5 +1,5 @@
 ---
-title: "Spark Pill 3: What Is the Shuffle and Why Does Spark Write to Disk If It's 'In-Memory'?"
+title: "Spark Pill 3: Shuffle: Moving data across the Network"
 description: "Have you wondered what happens physically when Spark redistributes data across machines? Let's trace the bytes through the sort-based shuffle, from serialization to TCP transfer."
 pubDate: 2026-08-30
 author: "Morad Abaz"

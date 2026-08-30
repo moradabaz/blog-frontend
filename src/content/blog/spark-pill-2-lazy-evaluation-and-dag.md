@@ -1,5 +1,5 @@
 ---
-title: "Spark Pill 2: Why Doesn't Spark Execute My Code Line by Line?"
+title: "Spark Pill 2: How Does the Spark DAG really work? And Why it doesn't execute line by line"
 description: "Have you ever wondered why Spark waits until you call .show() before reading a single byte? Let's look at lazy evaluation, the DAG, and the Catalyst optimizer."
 pubDate: 2026-08-30
 author: "Morad Abaz"

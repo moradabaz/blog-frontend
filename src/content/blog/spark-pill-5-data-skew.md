@@ -1,5 +1,5 @@
 ---
-title: "Spark Pill 5: I Have 10 Cores but My Job Runs Like It Has 1. What's Going On?"
+title: "Spark Pill 5: Data Skew: The Eternal Enemy of Spark"
 description: "Have you ever wondered why your Spark job uses 10 executors but one task takes 50x longer than the rest? The culprit is Data Skew, and it can turn a 5-minute job into a 2-hour timeout."
 pubDate: 2026-08-30
 author: "Morad Abaz"
