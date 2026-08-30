@@ -1,0 +1,184 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Quiz from '../../components/Quiz.astro';
+
+const questions = [
+  {
+    question: "Your Spark cluster has 3 nodes with 16GB RAM each (48GB total). You need to process 200GB of data. What happens?",
+    options: [
+      "Spark crashes with an OutOfMemoryError — the data doesn't fit in the cluster's total RAM",
+      "Spark processes the data in partitions, only holding a few in memory at a time, and spills to disk when needed",
+      "Spark compresses the 200GB into 48GB so it fits in memory",
+      "Spark sends the excess data back to the Driver to be processed locally"
+    ],
+    correct: 1,
+    explanation: "Spark doesn't need the entire dataset in memory at once. It processes data in ~128MB partitions — each executor works on a few partitions at a time, finishes them, and grabs the next batch. When memory runs short, Spark spills intermediate data to local disk and keeps going. It's slower than pure in-memory, but it doesn't crash."
+  },
+  {
+    question: "You hear 'Spark is fast because it's in-memory.' What does this actually mean?",
+    options: [
+      "Spark loads the entire dataset into RAM across the cluster before processing starts",
+      "Spark keeps intermediate results in memory between pipeline steps, instead of writing them to HDFS like Hadoop did",
+      "Spark uses a special type of RAM that's faster than what Pandas uses",
+      "Spark never touches disk under any circumstances"
+    ],
+    correct: 1,
+    explanation: "The 'in-memory' advantage is about intermediate results between steps — not about loading everything into RAM. Hadoop wrote results to HDFS (disk) after every Map-Reduce step. Spark keeps them in memory between steps, eliminating the slowest part of the pipeline. But Spark absolutely does use disk: for shuffle data, for spill when memory is tight, and for reading/writing source data."
+  },
+  {
+    question: "A colleague says: 'I can process 80GB in Pandas using chunksize — I read 50K rows at a time in a for loop and accumulate the results. Same as Spark.' What's the fundamental flaw in this comparison?",
+    options: [
+      "Pandas chunks are slower because Python is an interpreted language",
+      "Pandas chunks are sequential and single-core, but more importantly, YOU are the orchestrator — you manually write the coordination logic, which breaks for complex operations like joins, medians, or distinct",
+      "Pandas chunks don't actually work — they still load everything into memory",
+      "There's no flaw — Pandas with chunks is equivalent to Spark for most operations"
+    ],
+    correct: 1,
+    explanation: "The difference isn't just parallel vs. sequential. It's about WHO coordinates the distributed work. With Pandas chunks, you write the loop, you decide how to accumulate partial results, you handle edge cases. This works for simple sums, but try doing a median, a join between two 80GB files, or a global distinct with chunks — suddenly the coordination logic becomes incredibly complex or impossible. Spark handles all this automatically through its MapReduce execution model."
+  },
+  {
+    question: "In Hadoop MapReduce, a 5-step data pipeline was painfully slow. Why?",
+    options: [
+      "Hadoop could only use one machine at a time",
+      "Hadoop didn't support operations beyond simple word counts",
+      "Each Map-Reduce step wrote its output to HDFS (disk), so a 5-step pipeline meant 5 full disk write-read cycles between steps",
+      "Hadoop's Map phase was much slower than Spark's because it used older CPUs"
+    ],
+    correct: 2,
+    explanation: "Hadoop's architecture forced a full write to HDFS after every Map-Reduce step. The next step had to read that output back from disk before it could start. For a pipeline with 5 transformations: 5 writes + 5 reads to disk (HDDs at the time). This was the bottleneck Spark was designed to eliminate — by keeping intermediate data in memory between steps instead of writing to HDFS."
+  },
+  {
+    question: "You write this Spark code: df = spark.read.csv('sales.csv'); result = df.groupBy('country').agg(sum('revenue')). At this point, how many bytes of sales.csv has Spark read from disk?",
+    options: [
+      "All of it — Spark reads the file as soon as spark.read.csv() is called",
+      "Just the header row, to infer the schema",
+      "Zero bytes — Spark hasn't executed anything yet, it's only built a plan",
+      "One partition worth (~128MB) as a preview"
+    ],
+    correct: 2,
+    explanation: "Spark uses lazy evaluation. The read.csv() and groupBy().agg() lines only build a logical plan (the DAG) — they don't trigger any actual data processing. Not a single byte is read from disk until you call an action like .show(), .collect(), .count(), or .write(). This is fundamentally different from Pandas, where pd.read_csv() immediately loads the entire file into memory."
+  },
+  {
+    question: "If Spark's big innovation was keeping data in memory between steps... why does it still write shuffle data to local disk during execution?",
+    options: [
+      "It's a bug in Spark's design that hasn't been fixed yet",
+      "Shuffle data is too large to fit in memory",
+      "Fault tolerance — if a node dies during a shuffle, the shuffle data from surviving nodes is still on disk and doesn't need to be recomputed. Without this, a single node failure would force recomputation of the entire previous stage",
+      "Spark only writes to disk on older versions; modern Spark is fully in-memory"
+    ],
+    correct: 2,
+    explanation: "This is a deliberate design trade-off between speed and reliability. If shuffle data were only in memory and a node died mid-shuffle, Spark would have to re-execute the ENTIRE previous stage from scratch — re-reading source data, re-running all maps. By writing shuffle output to local disk, only the dead node's work needs to be recomputed; the other nodes' shuffle data survives. Spark chose to pay the ~100x latency cost of disk at shuffle time to avoid the catastrophic cost of full stage re-execution on failure."
+  },
+  {
+    question: "A data scientist on your team says: 'I'll just rent a machine with 1TB of RAM and use Pandas. No need to learn Spark.' For a 500GB analytical workload, what's the strongest argument against this?",
+    options: [
+      "Machines with 1TB RAM don't exist",
+      "It would be too slow because Pandas doesn't use GPU acceleration",
+      "It might work today, but you're scaling vertically — when data grows to 2TB you need a bigger machine, which gets exponentially more expensive and eventually doesn't exist. Spark scales horizontally by adding cheap nodes",
+      "Pandas can't do groupby operations on datasets larger than 100GB"
+    ],
+    correct: 2,
+    explanation: "This is the vertical vs. horizontal scaling argument. A 1TB RAM machine exists and might cost $15-20/hour in the cloud. It could handle 500GB in Pandas. But when data grows (and it always grows), you hit a ceiling — the biggest machine available isn't enough, and each upgrade gets disproportionately expensive. Spark scales by adding commodity nodes: need 2x capacity? Add more $3/hour machines. This is why Google invented MapReduce in the first place — no single machine could index the web."
+  }
+];
+---
+
+<BaseLayout
+  title="Quiz: Why Not Just Pandas? | Spark Pill 0"
+  description="Test your understanding of why distributed computing exists, what Spark really does differently from Pandas, and the history behind it all."
+>
+  <section class="pill-quiz-page">
+    <div class="container">
+      <a href="/blog/spark-pill-0-why-not-pandas" class="back-link">← Back to Pill 0</a>
+
+      <div class="pill-header">
+        <div class="badge badge-purple" style="margin-bottom: 0.5rem;">Pill 0 · Why Not Pandas?</div>
+        <h1>Quiz: Do You Really Understand Why Spark Exists?</h1>
+        <p class="pill-lead">
+          These questions aren't about memorizing facts. They test whether you've
+          internalized the reasoning — the kind of understanding that helps you
+          make good decisions in production, not just pass an interview.
+        </p>
+      </div>
+
+      <Quiz
+        title="Pill 0: Pandas vs. Spark — The Real Difference"
+        questions={questions}
+      />
+
+      <div class="pill-footer glass-card">
+        <h3>How did it go?</h3>
+        <p>
+          If you scored below 70%, re-read <strong>Pill 0</strong> — but this time,
+          don't just read it. After each section, close the tab and try to explain
+          the concept out loud in your own words. If you can't, that's the gap.
+        </p>
+        <div class="pill-footer-links">
+          <a href="/blog/spark-pill-0-why-not-pandas" class="btn btn-secondary btn-sm">Re-read Pill 0</a>
+          <a href="/pills/quiz-mapreduce" class="btn btn-primary btn-sm">Next: Pill 1 Quiz — MapReduce</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .pill-quiz-page {
+    padding: 3.5rem 0 5rem;
+  }
+
+  .back-link {
+    display: inline-block;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.8rem;
+    transition: color 0.2s ease;
+  }
+  .back-link:hover {
+    color: var(--accent-indigo);
+  }
+
+  .pill-header {
+    max-width: 720px;
+    margin-bottom: 2rem;
+  }
+
+  .pill-header h1 {
+    font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+    margin-bottom: 0.8rem;
+    line-height: 1.3;
+  }
+
+  .pill-lead {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+    max-width: 640px;
+  }
+
+  .pill-footer {
+    margin-top: 2.5rem;
+    padding: 2rem;
+    background: var(--bg-card);
+  }
+
+  .pill-footer h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-main);
+  }
+
+  .pill-footer p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.7;
+    margin-bottom: 1.1rem;
+    max-width: 600px;
+  }
+
+  .pill-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+</style>
