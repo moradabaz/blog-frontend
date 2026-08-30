@@ -39,7 +39,7 @@ const quizId = `quiz-${Math.random().toString(36).slice(2, 9)}`;
     </div>
     <h3 class="quiz-title">{title}</h3>
     <div class="quiz-progress">
-      <span class="quiz-progress-text">Pregunta <span class="quiz-current">1</span> de {questions.length}</span>
+      <span class="quiz-progress-text">Question <span class="quiz-current">1</span> of {questions.length}</span>
       <div class="quiz-progress-bar">
         <div class="quiz-progress-fill" style="width: 0%"></div>
       </div>
@@ -59,7 +59,7 @@ const quizId = `quiz-${Math.random().toString(36).slice(2, 9)}`;
   <!-- Footer -->
   <div class="quiz-footer">
     <button class="quiz-btn quiz-btn-next" hidden>
-      Siguiente
+      Next
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <line x1="5" y1="12" x2="19" y2="12"/>
         <polyline points="12 5 19 12 12 19"/>
@@ -78,7 +78,7 @@ const quizId = `quiz-${Math.random().toString(36).slice(2, 9)}`;
         <polyline points="23 4 23 10 17 10"/>
         <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
       </svg>
-      Repetir quiz
+      Retry quiz
     </button>
   </div>
 </div>
@@ -173,8 +173,8 @@ const quizId = `quiz-${Math.random().toString(36).slice(2, 9)}`;
       nextBtn.hidden = false;
       nextBtn.textContent = current < questions.length - 1 ? '' : '';
       nextBtn.innerHTML = current < questions.length - 1
-        ? 'Siguiente <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>'
-        : 'Ver resultados';
+        ? 'Next <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>'
+        : 'See results';
     }
 
     function showResults() {
@@ -187,10 +187,10 @@ const quizId = `quiz-${Math.random().toString(36).slice(2, 9)}`;
       let emoji = '';
       let msg = '';
 
-      if (pct === 100) { emoji = '🏆'; msg = '¡Perfecto! Dominas este tema.'; }
-      else if (pct >= 70) { emoji = '💪'; msg = '¡Muy bien! Tienes una base solida.'; }
-      else if (pct >= 40) { emoji = '📖'; msg = 'Vas por buen camino. Revisa la pill para afianzar.'; }
-      else { emoji = '🔄'; msg = 'Vale la pena repasar esta pill con calma.'; }
+      if (pct === 100) { emoji = '🏆'; msg = 'Perfect! You nailed this topic.'; }
+      else if (pct >= 70) { emoji = '💪'; msg = 'Nice work! You have a solid foundation.'; }
+      else if (pct >= 40) { emoji = '📖'; msg = 'Getting there. Re-read the pill to solidify the concepts.'; }
+      else { emoji = '🔄'; msg = 'Worth going through this pill again carefully.'; }
 
       resultsIcon.textContent = emoji;
       resultsTitle.textContent = msg;

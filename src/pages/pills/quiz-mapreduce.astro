@@ -4,90 +4,89 @@ import Quiz from '../../components/Quiz.astro';
 
 const questions = [
   {
-    question: "En un job MapReduce clasico, ¿que fase es la responsable de mover datos entre nodos para que todas las claves iguales terminen en el mismo reducer?",
+    question: "In a classic MapReduce job, which phase is responsible for moving data between nodes so that all equal keys end up at the same reducer?",
     options: [
-      "La fase Map, que envia las claves directamente al reducer correcto",
-      "La fase Shuffle, que reparticiona y transfiere datos por la red",
-      "La fase Reduce, que solicita los datos a cada mapper",
-      "El Driver, que orquesta la transferencia entre nodos"
+      "The Map phase, which sends keys directly to the correct reducer",
+      "The Shuffle phase, which repartitions and transfers data across the network",
+      "The Reduce phase, which requests data from each mapper",
+      "The Driver, which orchestrates the transfer between nodes"
     ],
     correct: 1,
-    explanation: "El Shuffle es la fase intermedia entre Map y Reduce. Es donde se produce el network I/O real: los datos se particionan por clave (normalmente con hash), se ordenan y se transfieren por la red para que cada reducer reciba TODAS las filas de sus claves asignadas. Es la fase mas cara de MapReduce."
+    explanation: "The Shuffle is the intermediate phase between Map and Reduce. This is where the real network I/O happens: data is partitioned by key (usually with a hash), sorted, and transferred across the network so that each reducer receives ALL the rows for its assigned keys. It is the most expensive phase of MapReduce."
   },
   {
-    question: "¿Por que un mapper no puede 'decidir' a que reducer envia cada registro?",
+    question: "Why can't a mapper 'decide' which reducer receives each record?",
     options: [
-      "Porque el mapper no conoce la funcion hash que se va a usar",
-      "Porque el mapper solo aplica una transformacion fila a fila — la asignacion al reducer la decide el partitioner durante el shuffle",
-      "Porque el driver centraliza todas las decisiones de routing",
-      "Porque los mappers se ejecutan despues de los reducers"
+      "Because the mapper doesn't know the hash function that will be used",
+      "Because the mapper only applies a row-by-row transformation. The assignment to a reducer is decided by the partitioner during the shuffle",
+      "Because the driver centralizes all routing decisions",
+      "Because mappers execute after the reducers"
     ],
     correct: 1,
-    explanation: "El mapper es una funcion pura: recibe una fila, emite cero o mas pares (clave, valor). No sabe cuantos reducers hay ni quien recibira su output. Es el partitioner (parte del shuffle) quien aplica hash(clave) % num_particiones para decidir a que reducer va cada registro."
+    explanation: "The mapper is a pure function: it receives a row and emits zero or more (key, value) pairs. It doesn't know how many reducers exist or who will receive its output. It is the partitioner (part of the shuffle) that applies hash(key) % num_partitions to decide which reducer gets each record."
   },
   {
-    question: "En Spark, ¿cual es el equivalente directo de la fase Map de MapReduce?",
+    question: "In Spark, what is the direct equivalent of MapReduce's Map phase?",
     options: [
-      "Una wide transformation como groupByKey()",
-      "Una narrow transformation como map() o filter()",
-      "El metodo collect() que trae datos al driver",
-      "La operacion persist() que guarda en cache"
+      "A wide transformation like groupByKey()",
+      "A narrow transformation like map() or filter()",
+      "The collect() method that brings data to the driver",
+      "The persist() operation that caches data"
     ],
     correct: 1,
-    explanation: "Las narrow transformations (map, filter, flatMap) procesan cada particion de forma independiente, sin necesidad de mover datos entre nodos. Esto es exactamente lo que hace un mapper: opera fila a fila dentro de su split de datos. Las wide transformations (groupBy, reduceByKey, join) son las que provocan shuffle."
+    explanation: "Narrow transformations (map, filter, flatMap) process each partition independently, without needing to move data between nodes. This is exactly what a mapper does: it operates row by row within its data split. Wide transformations (groupBy, reduceByKey, join) are the ones that trigger a shuffle."
   },
   {
-    question: "Si tienes 1TB de datos y 100 mappers, ¿cuanto dato lee cada mapper?",
+    question: "If you have 1TB of data and 100 mappers, how much data does each mapper read?",
     options: [
-      "1TB — cada mapper necesita ver todos los datos",
-      "~10GB — cada mapper lee su split (1TB / 100)",
-      "Depende de la clave — los mappers con claves populares leen mas",
-      "0GB — los mappers no leen datos, solo los transforman en memoria"
+      "1TB. Each mapper needs to see all the data",
+      "~10GB. Each mapper reads its split (1TB / 100)",
+      "It depends on the key. Mappers with popular keys read more",
+      "0GB. Mappers don't read data, they only transform it in memory"
     ],
     correct: 1,
-    explanation: "Los datos de entrada se dividen en splits (bloques) y cada mapper recibe un split. Con 1TB y 100 mappers, cada uno lee ~10GB. Los mappers no saben nada de las claves de otros mappers — procesan su porcion de datos de forma completamente independiente y en paralelo."
+    explanation: "The input data is divided into splits (blocks) and each mapper receives one split. With 1TB and 100 mappers, each one reads ~10GB. Mappers know nothing about other mappers' keys. They process their portion of data completely independently and in parallel."
   },
   {
-    question: "¿Que ocurre si una clave concentra el 80% de los datos en un job con reduceByKey()?",
+    question: "What happens if one key concentrates 80% of the data in a job with reduceByKey()?",
     options: [
-      "Spark detecta el skew y redistribuye automaticamente",
-      "Los 100 reducers procesan ese 80% en paralelo",
-      "Un solo reducer recibe el 80% de los datos, se convierte en cuello de botella y puede causar OOM o spill a disco",
-      "El driver rechaza el job porque detecta la distribucion desigual"
+      "Spark detects the skew and automatically redistributes",
+      "All 100 reducers process that 80% in parallel",
+      "A single reducer receives 80% of the data, becomes a bottleneck, and can cause OOM or spill to disk",
+      "The driver rejects the job because it detects the uneven distribution"
     ],
     correct: 2,
-    explanation: "La funcion hash es determinista: misma clave → misma particion → mismo reducer. Si una clave domina los datos, ese reducer recibe una carga desproporcionada mientras los demas terminan rapido y esperan. Esto es data skew: causa spill a disco, GC storms, y en casos extremos OOM. Spark no lo corrige automaticamente (salvo AQE con skew join hints en versiones recientes)."
+    explanation: "The hash function is deterministic: same key → same partition → same reducer. If one key dominates the data, that reducer receives a disproportionate load while the others finish quickly and wait. This is data skew: it causes spill to disk, GC storms, and in extreme cases OOM. Spark does not correct it automatically (except AQE with skew join hints in recent versions)."
   },
   {
-    question: "¿Por que Spark introdujo el modelo DAG en lugar de encadenar jobs MapReduce como hacia Hadoop?",
+    question: "Why did Spark introduce the DAG model instead of chaining MapReduce jobs like Hadoop did?",
     options: [
-      "Porque el DAG permite ejecutar mas mappers en paralelo",
-      "Porque el DAG permite encadenar transformaciones sin escribir resultados intermedios a disco entre cada fase Map-Reduce",
-      "Porque el DAG elimina la necesidad de shuffle entre nodos",
-      "Porque el DAG permite usar GPU ademas de CPU"
+      "Because the DAG allows more mappers to run in parallel",
+      "Because the DAG allows chaining transformations without writing intermediate results to disk between each Map-Reduce phase",
+      "Because the DAG eliminates the need for shuffle between nodes",
+      "Because the DAG allows using GPUs in addition to CPUs"
     ],
     correct: 1,
-    explanation: "En Hadoop, cada paso Map-Reduce es un job independiente: el output del reducer se escribe a HDFS (disco) y el siguiente job lo lee de nuevo. Encadenar 5 pasos = 5 escrituras/lecturas a disco. El DAG de Spark permite planificar toda la cadena y pasar datos intermedios en memoria entre stages, escribiendo a disco solo cuando hay un shuffle obligatorio."
+    explanation: "In Hadoop, each Map-Reduce step is an independent job: the reducer's output is written to HDFS (disk) and the next job reads it again. Chaining 5 steps = 5 disk write/read cycles. Spark's DAG allows planning the entire chain and passing intermediate data in memory between stages, writing to disk only when a shuffle is required."
   }
 ];
 ---
 
 <BaseLayout
   title="Quiz: MapReduce & Spark Fundamentals | Morad Abaz"
-  description="Pon a prueba tus conocimientos sobre MapReduce, el modelo de computacion distribuida y como se traduce a Spark."
+  description="Test your understanding of how MapReduce works under the hood: the Map, Shuffle and Reduce phases, what happens physically on each node, and why Spark evolved to the DAG model."
 >
   <section class="pill-quiz-page">
     <div class="container">
-      <!-- Page Header -->
-      <a href="/pills" class="back-link">← Volver a Pills</a>
+      <a href="/pills" class="back-link">← Back to Pills</a>
 
       <div class="pill-header">
         <div class="badge badge-purple" style="margin-bottom: 0.5rem;">Pill 1 · MapReduce</div>
-        <h1>Quiz: MapReduce & Computacion Distribuida</h1>
+        <h1>Quiz: MapReduce & Distributed Computing</h1>
         <p class="pill-lead">
-          Comprueba si has interiorizado como funciona MapReduce por debajo:
-          las fases Map, Shuffle y Reduce, que pasa fisicamente en cada nodo,
-          y por que Spark evoluciono hacia el modelo DAG.
+          Check whether you have internalized how MapReduce works under the hood:
+          the Map, Shuffle and Reduce phases, what happens physically on each node,
+          and why Spark evolved to the DAG model.
         </p>
       </div>
 
@@ -97,14 +96,14 @@ const questions = [
       />
 
       <div class="pill-footer glass-card">
-        <h3>¿Quieres profundizar?</h3>
+        <h3>Want to go deeper?</h3>
         <p>
-          Este quiz cubre los conceptos de la <strong>Pill 1: MapReduce — El Modelo Mental</strong>.
-          Si has fallado alguna pregunta, revisa la pill para afianzar los conceptos.
+          This quiz covers the concepts from <strong>Pill 1: MapReduce, The Mental Model</strong>.
+          If you missed any question, review the pill to solidify the concepts.
         </p>
         <div class="pill-footer-links">
-          <a href="/blog/spark-performance-tuning" class="btn btn-secondary btn-sm">Leer: Spark Performance Tuning</a>
-          <a href="https://medium.com/@moradabaz" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">Mis articulos en Medium</a>
+          <a href="/blog/spark-performance-tuning" class="btn btn-secondary btn-sm">Read: Spark Performance Tuning</a>
+          <a href="https://medium.com/@moradabaz" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">My articles on Medium</a>
         </div>
       </div>
     </div>
