@@ -242,6 +242,14 @@ pre code {
   background: #0f172a;
   color: #f8fafc;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+}
+
+.prose img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-sm);
 }
 
 /* Scrollbar */

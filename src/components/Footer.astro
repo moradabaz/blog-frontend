@@ -97,9 +97,16 @@ const currentYear = new Date().getFullYear();
   }
 
   @media (max-width: 768px) {
+    .footer {
+      padding: 2rem 0 1.5rem 0;
+      margin-top: 2.5rem;
+    }
     .footer-container {
       grid-template-columns: 1fr;
       gap: 1.5rem;
+    }
+    .footer-links {
+      grid-template-columns: 1fr 1fr;
     }
   }
 </style>
