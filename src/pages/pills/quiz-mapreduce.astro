@@ -6,10 +6,10 @@ const questions = [
   {
     question: "In a classic MapReduce job, which phase is responsible for moving data between nodes so that all equal keys end up at the same reducer?",
     options: [
-      "The Map phase, which sends keys directly to the correct reducer",
-      "The Shuffle phase, which repartitions and transfers data across the network",
-      "The Reduce phase, which requests data from each mapper",
-      "The Driver, which orchestrates the transfer between nodes"
+      " - The Map phase, which sends keys directly to the correct reducer",
+      " - The Shuffle phase, which repartitions and transfers data across the network",
+      " - The Reduce phase, which requests data from each mapper",
+      " - The Driver, which orchestrates the transfer between nodes"
     ],
     correct: 1,
     explanation: "The Shuffle is the intermediate phase between Map and Reduce. This is where the real network I/O happens: data is partitioned by key (usually with a hash), sorted, and transferred across the network so that each reducer receives ALL the rows for its assigned keys. It is the most expensive phase of MapReduce."
@@ -17,10 +17,10 @@ const questions = [
   {
     question: "Why can't a mapper 'decide' which reducer receives each record?",
     options: [
-      "Because the mapper doesn't know the hash function that will be used",
-      "Because the mapper only applies a row-by-row transformation. The assignment to a reducer is decided by the partitioner during the shuffle",
-      "Because the driver centralizes all routing decisions",
-      "Because mappers execute after the reducers"
+      " - Because the mapper doesn't know the hash function that will be used",
+      " - Because the mapper only applies a row-by-row transformation. The assignment to a reducer is decided by the partitioner during the shuffle",
+      " - Because the driver centralizes all routing decisions",
+      " - Because mappers execute after the reducers"
     ],
     correct: 1,
     explanation: "The mapper is a pure function: it receives a row and emits zero or more (key, value) pairs. It doesn't know how many reducers exist or who will receive its output. It is the partitioner (part of the shuffle) that applies hash(key) % num_partitions to decide which reducer gets each record."
@@ -28,10 +28,10 @@ const questions = [
   {
     question: "In Spark, what is the direct equivalent of MapReduce's Map phase?",
     options: [
-      "A wide transformation like groupByKey()",
-      "A narrow transformation like map() or filter()",
-      "The collect() method that brings data to the driver",
-      "The persist() operation that caches data"
+      " - A wide transformation like groupByKey()",
+      " - A narrow transformation like map() or filter()",
+      " - The collect() method that brings data to the driver",
+      " - The persist() operation that caches data"
     ],
     correct: 1,
     explanation: "Narrow transformations (map, filter, flatMap) process each partition independently, without needing to move data between nodes. This is exactly what a mapper does: it operates row by row within its data split. Wide transformations (groupBy, reduceByKey, join) are the ones that trigger a shuffle."
@@ -39,10 +39,10 @@ const questions = [
   {
     question: "If you have 1TB of data and 100 mappers, how much data does each mapper read?",
     options: [
-      "1TB. Each mapper needs to see all the data",
-      "~10GB. Each mapper reads its split (1TB / 100)",
-      "It depends on the key. Mappers with popular keys read more",
-      "0GB. Mappers don't read data, they only transform it in memory"
+      " - 1TB. Each mapper needs to see all the data",
+      " - ~10GB. Each mapper reads its split (1TB / 100)",
+      " - It depends on the key. Mappers with popular keys read more",
+      " - 0GB. Mappers don't read data, they only transform it in memory"
     ],
     correct: 1,
     explanation: "The input data is divided into splits (blocks) and each mapper receives one split. With 1TB and 100 mappers, each one reads ~10GB. Mappers know nothing about other mappers' keys. They process their portion of data completely independently and in parallel."
@@ -50,10 +50,10 @@ const questions = [
   {
     question: "What happens if one key concentrates 80% of the data in a job with reduceByKey()?",
     options: [
-      "Spark detects the skew and automatically redistributes",
-      "All 100 reducers process that 80% in parallel",
-      "A single reducer receives 80% of the data, becomes a bottleneck, and can cause OOM or spill to disk",
-      "The driver rejects the job because it detects the uneven distribution"
+      " - Spark detects the skew and automatically redistributes",
+      " - All 100 reducers process that 80% in parallel",
+      " - A single reducer receives 80% of the data, becomes a bottleneck, and can cause OOM or spill to disk",
+      " - The driver rejects the job because it detects the uneven distribution"
     ],
     correct: 2,
     explanation: "The hash function is deterministic: same key → same partition → same reducer. If one key dominates the data, that reducer receives a disproportionate load while the others finish quickly and wait. This is data skew: it causes spill to disk, GC storms, and in extreme cases OOM. Spark does not correct it automatically (except AQE with skew join hints in recent versions)."
@@ -61,10 +61,10 @@ const questions = [
   {
     question: "Why did Spark introduce the DAG model instead of chaining MapReduce jobs like Hadoop did?",
     options: [
-      "Because the DAG allows more mappers to run in parallel",
-      "Because the DAG allows chaining transformations without writing intermediate results to disk between each Map-Reduce phase",
-      "Because the DAG eliminates the need for shuffle between nodes",
-      "Because the DAG allows using GPUs in addition to CPUs"
+      " - Because the DAG allows more mappers to run in parallel",
+      " - Because the DAG allows chaining transformations without writing intermediate results to disk between each Map-Reduce phase",
+      " - Because the DAG eliminates the need for shuffle between nodes",
+      " - Because the DAG allows using GPUs in addition to CPUs"
     ],
     correct: 1,
     explanation: "In Hadoop, each Map-Reduce step is an independent job: the reducer's output is written to HDFS (disk) and the next job reads it again. Chaining 5 steps = 5 disk write/read cycles. Spark's DAG allows planning the entire chain and passing intermediate data in memory between stages, writing to disk only when a shuffle is required."
