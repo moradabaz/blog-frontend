@@ -1,10 +1,13 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import BlogCard from '../../components/BlogCard.astro';
+import SeriesCard from '../../components/SeriesCard.astro';
 import { getCollection } from 'astro:content';
 
-const posts = await getCollection('blog');
+const posts = await getCollection('blog', ({ data }) => data.category !== 'Spark Pills');
 const sortedPosts = posts.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+const sparkPillsCount = (await getCollection('blog', ({ data }) => data.category === 'Spark Pills')).length;
 
 // Collect all unique tags across all posts
 const allTags = ['All', ...Array.from(new Set(sortedPosts.flatMap(p => p.data.tags))).sort()];
@@ -49,6 +52,14 @@ const postsData = sortedPosts.map(p => ({
 
     <!-- Cards Grid -->
     <div class="cards-grid" id="cardsGrid">
+      <div class="card-wrapper" data-tags={JSON.stringify(['Spark'])}>
+        <SeriesCard
+          title="Spark Pills"
+          description="A series for data engineers who can run PySpark jobs but want to understand what happens underneath: MapReduce, the DAG, shuffle, joins, skew, caching, the Spark UI, Iceberg, and streaming."
+          count={sparkPillsCount}
+          href="/blog/spark-pills"
+        />
+      </div>
       {sortedPosts.map(post => (
         <div
           class="card-wrapper"

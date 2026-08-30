@@ -1,0 +1,180 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+
+const posts = await getCollection('blog', ({ data }) => data.category === 'Spark Pills');
+
+function pillNumber(slug: string): number {
+  const match = slug.match(/spark-pill-(\d+)/);
+  return match ? parseInt(match[1], 10) : 0;
+}
+
+const sortedPosts = posts.sort((a, b) => pillNumber(a.slug) - pillNumber(b.slug));
+---
+
+<BaseLayout
+  title="Spark Pills Series | Morad Abaz"
+  description="A 10-part series that demystifies Spark internals, one real question at a time: MapReduce, the DAG, shuffle, joins, skew, caching, the Spark UI, Iceberg, and streaming."
+>
+  <div class="container page-container">
+    <a href="/blog" class="back-link">← Back to Articles</a>
+
+    <div class="page-header">
+      <div class="badge badge-series" style="margin-bottom: 0.8rem;">Series · 10 parts</div>
+      <h1>Spark <span class="gradient-text">Pills</span></h1>
+      <p class="page-subtitle">
+        A series for data engineers who can run PySpark jobs but want to understand what happens
+        underneath. Each pill starts from a real question and each has a quiz to check what stuck.
+      </p>
+    </div>
+
+    <ol class="pills-list">
+      {sortedPosts.map((post, i) => (
+        <li class="pill-item">
+          <a href={`/blog/${post.slug}`} class="pill-link">
+            <span class="pill-index">{String(i).padStart(2, '0')}</span>
+            <div class="pill-body">
+              <h3 class="pill-title">{post.data.title}</h3>
+              <p class="pill-description">{post.data.description}</p>
+              <div class="pill-tags">
+                {post.data.tags.slice(0, 4).map((tag: string) => (
+                  <span class="badge">{tag}</span>
+                ))}
+              </div>
+            </div>
+            <span class="pill-arrow" aria-hidden="true">→</span>
+          </a>
+        </li>
+      ))}
+    </ol>
+  </div>
+</BaseLayout>
+
+<style>
+  .page-container {
+    padding-top: 2.5rem;
+    padding-bottom: 5rem;
+  }
+
+  .back-link {
+    display: inline-block;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.8rem;
+    transition: color 0.2s ease;
+  }
+
+  .back-link:hover {
+    color: var(--accent-blue);
+  }
+
+  .badge-series {
+    background: var(--accent-blue);
+    color: #ffffff;
+  }
+
+  .page-header {
+    margin-bottom: 2.25rem;
+    max-width: 780px;
+  }
+
+  .page-header h1 {
+    margin-bottom: 0.6rem;
+  }
+
+  .page-subtitle {
+    font-size: 1rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+  }
+
+  .pills-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    list-style: none;
+  }
+
+  .pill-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .pill-item:hover {
+    transform: translateY(-2px);
+    border-color: var(--border-color-hover);
+    box-shadow: var(--shadow-hover);
+  }
+
+  .pill-link {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    padding: 1.15rem 1.4rem;
+    color: inherit;
+  }
+
+  .pill-link:hover {
+    color: inherit;
+  }
+
+  .pill-index {
+    flex-shrink: 0;
+    font-family: var(--font-mono);
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: var(--accent-blue);
+    width: 2.4rem;
+    text-align: center;
+  }
+
+  .pill-body {
+    flex-grow: 1;
+    min-width: 0;
+  }
+
+  .pill-title {
+    font-size: 1.02rem;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+    line-height: 1.4;
+  }
+
+  .pill-description {
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    line-height: 1.55;
+    margin-bottom: 0.6rem;
+  }
+
+  .pill-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .pill-arrow {
+    flex-shrink: 0;
+    color: var(--text-dim);
+    font-size: 1.1rem;
+    transition: transform 0.15s ease, color 0.15s ease;
+  }
+
+  .pill-item:hover .pill-arrow {
+    color: var(--accent-blue);
+    transform: translateX(3px);
+  }
+
+  @media (max-width: 640px) {
+    .pill-link {
+      flex-wrap: wrap;
+      gap: 0.6rem 1rem;
+    }
+    .pill-arrow {
+      display: none;
+    }
+  }
+</style>

@@ -2,12 +2,15 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import MediumCard from '../components/MediumCard.astro';
 import BlogCard from '../components/BlogCard.astro';
+import SeriesCard from '../components/SeriesCard.astro';
 import { fetchMediumPosts } from '../lib/medium';
 import { getCollection } from 'astro:content';
 
 const mediumPosts = await fetchMediumPosts();
-const localPosts = await getCollection('blog');
+const localPosts = await getCollection('blog', ({ data }) => data.category !== 'Spark Pills');
 const sortedLocalPosts = localPosts.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+const sparkPillsCount = (await getCollection('blog', ({ data }) => data.category === 'Spark Pills')).length;
 ---
 
 <BaseLayout>
@@ -74,7 +77,13 @@ const sortedLocalPosts = localPosts.sort((a, b) => b.data.pubDate.valueOf() - a.
       </div>
 
       <div class="cards-grid">
-        {sortedLocalPosts.slice(0, 3).map(post => (
+        <SeriesCard
+          title="Spark Pills"
+          description="A series for data engineers who can run PySpark jobs but want to understand what happens underneath: MapReduce, the DAG, shuffle, joins, skew, caching, the Spark UI, Iceberg, and streaming."
+          count={sparkPillsCount}
+          href="/blog/spark-pills"
+        />
+        {sortedLocalPosts.slice(0, 2).map(post => (
           <BlogCard post={post} />
         ))}
       </div>

@@ -1,0 +1,128 @@
+---
+interface Props {
+  title: string;
+  description: string;
+  count: number;
+  href: string;
+  badgeLabel?: string;
+}
+
+const { title, description, count, href, badgeLabel = 'Series' } = Astro.props;
+---
+
+<article class="glass-card series-card">
+  <a href={href} class="series-link">
+    <div class="card-content">
+      <div class="card-header">
+        <div class="card-badges">
+          <span class="badge badge-series">{badgeLabel}</span>
+          <span class="badge">{count} parts</span>
+        </div>
+        <span class="series-icon" aria-hidden="true">⚡</span>
+      </div>
+
+      <h3 class="card-title">{title}</h3>
+
+      <p class="card-snippet">{description}</p>
+
+      <div class="card-footer">
+        <span class="read-more">
+          Browse the series →
+        </span>
+      </div>
+    </div>
+  </a>
+</article>
+
+<style>
+  .series-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: linear-gradient(155deg, #eff6ff 0%, #ffffff 55%);
+    border-color: #bae0fd;
+  }
+
+  .series-card:hover {
+    border-color: var(--accent-blue);
+  }
+
+  .series-link {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    color: inherit;
+  }
+
+  .series-link:hover {
+    color: inherit;
+  }
+
+  .card-content {
+    padding: 1.35rem;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 0.85rem;
+  }
+
+  .card-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .badge-series {
+    background: var(--accent-blue);
+    color: #ffffff;
+  }
+
+  .series-icon {
+    font-size: 1.15rem;
+    line-height: 1;
+  }
+
+  .card-title {
+    margin-bottom: 0.65rem;
+    font-size: 1.12rem;
+    line-height: 1.4;
+    font-weight: 600;
+    color: var(--text-main);
+  }
+
+  .card-snippet {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    line-height: 1.6;
+    margin-bottom: 1.25rem;
+    flex-grow: 1;
+  }
+
+  .card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-top: 0.85rem;
+    border-top: 1px solid var(--border-color);
+  }
+
+  .read-more {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.84rem;
+    font-weight: 500;
+    color: var(--accent-blue);
+    transition: color 0.15s ease;
+  }
+
+  .series-card:hover .read-more {
+    color: #0369a1;
+  }
+</style>
