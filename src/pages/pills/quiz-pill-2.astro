@@ -1,0 +1,184 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Quiz from '../../components/Quiz.astro';
+
+const questions = [
+  {
+    question: "You write: df = spark.read.parquet('events.parquet'); filtered = df.filter(df.year == 2024). At this point, how many bytes has Spark read from events.parquet?",
+    options: [
+      "All of it. spark.read.parquet() loads the file as soon as it is called",
+      "Just the Parquet metadata (footer), to learn the schema and row group layout",
+      "Zero bytes. Both lines only add nodes to the DAG. Nothing reads from disk until an action is called",
+      "One row group (~128MB) as a preview to validate the filter condition"
+    ],
+    correct: 2,
+    explanation: "Spark uses lazy evaluation. spark.read.parquet() and .filter() are transformations that build a logical plan (the DAG) in the Driver's memory. Not a single byte of the actual data file is read until you call an action like .show(), .count(), or .write(). This is fundamentally different from Pandas, where pd.read_parquet() immediately loads the entire file."
+  },
+  {
+    question: "Your Parquet table has 50 columns. Your query uses filter(col('status') == 'active').select('name', 'email'). How does Catalyst optimize the disk read?",
+    options: [
+      "Spark reads all 50 columns, then drops 48 after the select. The file format does not support partial reads",
+      "Spark reads only the 'name', 'email', and 'status' columns from disk (projection pruning), and skips row groups where status cannot be 'active' (predicate pushdown)",
+      "Spark reads only 'name' and 'email', ignoring the filter since it references a different column",
+      "Spark caches all 50 columns in memory so future queries are faster"
+    ],
+    correct: 1,
+    explanation: "Catalyst applies two optimizations here. Projection pruning tells the Parquet reader to only read the 3 columns actually needed (name, email, and status for the filter). Predicate pushdown pushes the filter condition into the scan, allowing the reader to skip entire row groups whose statistics show no 'active' values. Together, these can reduce disk I/O by 90% or more."
+  },
+  {
+    question: "You run .explain(True) and see four plans. What is the difference between the Analyzed Logical Plan and the Optimized Logical Plan?",
+    options: [
+      "The Analyzed plan is for narrow transformations; the Optimized plan is for wide transformations",
+      "The Analyzed plan resolves column names and validates types. The Optimized plan is where Catalyst applies rules like predicate pushdown, projection pruning, and filter merging",
+      "The Analyzed plan runs on the Driver; the Optimized plan runs on the executors",
+      "They are the same plan shown in two different formats for readability"
+    ],
+    correct: 1,
+    explanation: "The Analyzed plan is your code after Spark verifies it: column names are resolved against the schema, data types are checked, and ambiguous references are clarified. The Optimized plan is what Catalyst produces after applying its optimization rules. This is where filters get pushed down, unnecessary columns are pruned, constants are folded, and operations are reordered for efficiency."
+  },
+  {
+    question: "A pipeline has: read -> filter -> select -> groupBy -> agg -> filter -> orderBy. How many stages will this create?",
+    options: [
+      "Seven stages, one per operation",
+      "Two stages: everything before groupBy is stage 1, everything after is stage 2",
+      "Three stages: (read + filter + select + groupBy partial agg) then shuffle, (agg + filter) then shuffle, (orderBy)",
+      "One stage: Catalyst fuses everything into a single pass"
+    ],
+    correct: 2,
+    explanation: "Stage boundaries are drawn at shuffle points. groupBy triggers a shuffle (stage boundary 1), and orderBy triggers another shuffle (stage boundary 2). Everything before the first shuffle is Stage 1. The aggregation and post-agg filter are Stage 2. The final sort is Stage 3. The narrow transformations (filter, select) within a stage are fused into a single pass."
+  },
+  {
+    question: "You call .count() on a DataFrame, then immediately call .show() on the same DataFrame. How many times does Spark execute the full pipeline?",
+    options: [
+      "Once. Spark caches the result after .count() and reuses it for .show()",
+      "Twice. Each action triggers a complete execution of the entire DAG from scratch, because Spark does not cache results automatically",
+      "Once for the computation, but .show() just formats the cached output differently",
+      "It depends on the cluster size. Larger clusters cache results between actions"
+    ],
+    correct: 1,
+    explanation: "Spark does not automatically cache intermediate or final results. Each action triggers a full execution cycle: Catalyst re-optimizes the plan, stages are created, tasks are sent to executors, and data is read and processed from scratch. To avoid this, you can call .cache() or .persist() on the DataFrame before the first action, which tells Spark to store the computed partitions in memory for reuse."
+  },
+  {
+    question: "Why can Catalyst push a filter like year == 2024 down to the Parquet scan, but cannot push a filter like sum(revenue) > 1000 below a groupBy?",
+    options: [
+      "Parquet supports filtering but groupBy does not",
+      "sum(revenue) > 1000 depends on the aggregation result, which does not exist until after the groupBy + shuffle completes. The filter cannot move before the operation that produces its input",
+      "Catalyst only optimizes filters on string columns, not numeric aggregations",
+      "It can push both down, but chooses not to for performance reasons"
+    ],
+    correct: 1,
+    explanation: "Predicate pushdown only works when the filter condition can be evaluated BEFORE the data reaches a certain point. year == 2024 can be checked on each raw row, so it pushes down to the scan. But sum(revenue) > 1000 is a condition on an aggregate value that only exists after groupBy + sum completes. The data needed to evaluate the condition does not exist until after the shuffle, so the filter must stay above the aggregation."
+  },
+  {
+    question: "In an eager execution model (like Pandas), you write three operations: filter rows, add a computed column, select two columns. What is the performance cost compared to Spark's lazy + fused execution?",
+    options: [
+      "No difference. Both systems process data the same way internally",
+      "Pandas is faster because it avoids the overhead of building a DAG",
+      "Eager execution makes three separate passes over the data, creating intermediate copies each time. Spark's Catalyst fuses them into a single pass, processing each row once",
+      "The cost is the same per row, but Pandas is limited to one core while Spark uses many"
+    ],
+    correct: 2,
+    explanation: "In Pandas, each operation runs immediately and produces a new intermediate DataFrame in memory. Three operations means three passes over the data and three temporary copies. Catalyst fuses consecutive narrow transformations into a single function applied once per row. This reduces both memory allocations and CPU cache misses, producing the same result with one pass instead of three."
+  }
+];
+---
+
+<BaseLayout
+  title="Quiz: Lazy Evaluation & the DAG | Spark Pill 2"
+  description="Test your understanding of why Spark waits to execute, how Catalyst optimizes plans, and what determines stage boundaries."
+>
+  <section class="pill-quiz-page">
+    <div class="container">
+      <a href="/blog/spark-pill-2-lazy-evaluation-and-dag" class="back-link">&larr; Back to Pill 2</a>
+
+      <div class="pill-header">
+        <div class="badge badge-purple" style="margin-bottom: 0.5rem;">Pill 2 · Lazy Evaluation & DAG</div>
+        <h1>Quiz: Lazy Evaluation & the Catalyst Optimizer</h1>
+        <p class="pill-lead">
+          These questions test whether you understand why Spark builds a plan
+          before executing, what the optimizer does with that plan, and how
+          stages are formed. Reasoning over memorization.
+        </p>
+      </div>
+
+      <Quiz
+        title="Pill 2: Lazy Evaluation, DAG & Catalyst"
+        questions={questions}
+      />
+
+      <div class="pill-footer glass-card">
+        <h3>How did it go?</h3>
+        <p>
+          If you scored below 70%, re-read <strong>Pill 2</strong>. Try running
+          <code>.explain(True)</code> on one of your own queries and identify
+          where Catalyst pushed filters down or pruned columns.
+        </p>
+        <div class="pill-footer-links">
+          <a href="/blog/spark-pill-2-lazy-evaluation-and-dag" class="btn btn-secondary btn-sm">Re-read Pill 2</a>
+          <a href="/pills/quiz-pill-3" class="btn btn-primary btn-sm">Next: Pill 3 Quiz &mdash; The Shuffle</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .pill-quiz-page {
+    padding: 3.5rem 0 5rem;
+  }
+
+  .back-link {
+    display: inline-block;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.8rem;
+    transition: color 0.2s ease;
+  }
+  .back-link:hover {
+    color: var(--accent-indigo);
+  }
+
+  .pill-header {
+    max-width: 720px;
+    margin-bottom: 2rem;
+  }
+
+  .pill-header h1 {
+    font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+    margin-bottom: 0.8rem;
+    line-height: 1.3;
+  }
+
+  .pill-lead {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+    max-width: 640px;
+  }
+
+  .pill-footer {
+    margin-top: 2.5rem;
+    padding: 2rem;
+    background: var(--bg-card);
+  }
+
+  .pill-footer h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-main);
+  }
+
+  .pill-footer p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.7;
+    margin-bottom: 1.1rem;
+    max-width: 600px;
+  }
+
+  .pill-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+</style>

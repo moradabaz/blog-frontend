@@ -1,0 +1,184 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Quiz from '../../components/Quiz.astro';
+
+const questions = [
+  {
+    question: "Your Spark UI shows these task metrics for a shuffle stage: P75 duration = 4 seconds, Max duration = 420 seconds, Spill (Disk) on the max task = 18GB. What does this tell you?",
+    options: [
+      "The cluster needs more memory because 18GB of data is spilling to disk across all executors",
+      "You have severe Data Skew: one partition has far more data than the rest, causing one task to take 100x longer while other executors sit idle",
+      "The shuffle stage is too large and you need to increase spark.sql.shuffle.partitions",
+      "The max task is slow because of network congestion, not data imbalance"
+    ],
+    correct: 1,
+    explanation: "Max being 100x P75 is the textbook signal of Data Skew. Most tasks (the P75) finish in 4 seconds, meaning the data per partition is manageable. But one partition has so much data that it takes 420 seconds and spills 18GB to disk. Adding memory to the cluster would not fix this: the problem is that one key concentrates too much data on one executor. The other executors finished in seconds and are waiting."
+  },
+  {
+    question: "What is the correct sequence of the 'death cascade' when a severely skewed partition hits an executor?",
+    options: [
+      "GC Storm → Spill to Disk → Heartbeat Timeout → Single-Thread Bottleneck",
+      "Single-Thread Bottleneck → Spill to Disk → GC Storm → Heartbeat Timeout and executor death",
+      "Heartbeat Timeout → Spill to Disk → OOM → Driver reassignment",
+      "Spill to Disk → Single-Thread Bottleneck → Network Timeout → Driver kills task"
+    ],
+    correct: 1,
+    explanation: "The cascade follows a logical progression: (1) all the skewed data goes to one task on one thread, creating a bottleneck, (2) the data exceeds what fits in the executor's memory fraction, forcing spills to disk, (3) the JVM heap fills up and the garbage collector enters aggressive Stop-The-World pauses, (4) the frozen executor stops sending heartbeats, the Driver declares it dead, and the stage fails."
+  },
+  {
+    question: "A pipeline filters a large Iceberg table using .filter(F.col('user_id').isin(python_list)) where the list comes from .collect(). Initially, the filter stage launches 314 tasks. Six months later, the same job launches 1,780 tasks and is 5x slower. What happened?",
+    options: [
+      "The Iceberg table grew 5x in size, proportionally increasing the task count",
+      "The python_list grew beyond the threshold where Iceberg can prune files using min/max statistics, so file pruning stopped working and Spark now reads many more files than necessary",
+      "Spark changed its default partition size between versions, creating more tasks from the same data",
+      "The executor count was reduced, forcing each executor to handle more tasks sequentially"
+    ],
+    correct: 1,
+    explanation: "Iceberg uses min/max column statistics per file to skip files that cannot contain matching values. When the isin() list is small (hundreds of values), Iceberg can effectively prune files. As the list grows to thousands, the pruning logic can no longer eliminate files efficiently, so Spark reads nearly every file. The fix is to replace collect() + isin() with a semi-join, which lets Spark use proper join strategies and preserves Iceberg's pruning."
+  },
+  {
+    question: "Which of these operations can suffer from Data Skew?",
+    options: [
+      "Only joins, because that's where Hash(key) % num_partitions redistributes data",
+      "Joins and groupBy().agg(), but not distinct() or sort()",
+      "Any operation that redistributes data by key: joins, groupBy().agg(), distinct(), sort()/orderBy(), and repartition(col)",
+      "Only Sort-Merge Joins; Broadcast Hash Joins are immune and so are all non-join operations"
+    ],
+    correct: 2,
+    explanation: "Any operation that uses Hash(key) % num_partitions to redistribute data is vulnerable to skew. groupBy().agg() sends all rows for a hot key to one reducer. distinct() groups identical values on one partition. sort()/orderBy() uses range partitioning that can create imbalanced partitions. repartition(col) hashes by the column directly. Joins get the most attention because they combine skew from both sides, but the underlying mechanism is the same."
+  },
+  {
+    question: "You apply salting with 10 salt values to a skewed join key. What tradeoff are you making?",
+    options: [
+      "You're adding 10 extra columns to both tables, increasing storage cost",
+      "You're spreading the hot key across 10 partitions on the big table, but you must replicate (explode) the small table 10x so every salt value finds its match",
+      "You're splitting both tables into 10 copies each, using 100x the original storage",
+      "You're replacing the hash-based partitioning with round-robin, which eliminates skew but randomizes the join order"
+    ],
+    correct: 1,
+    explanation: "Salting adds a random suffix (0-9) to the join key on the skewed (big) table, spreading its rows across 10 partitions instead of one. But the other table needs to match ALL possible salt values for each key, so it must be exploded: each row becomes 10 rows (one per salt). The big table is redistributed evenly (the goal), and the small table grows 10x (the cost). This is a good tradeoff when the big table's skew is severe, because 10 copies of a small table is cheap compared to one executor processing 70% of the data."
+  },
+  {
+    question: "You enable AQE with spark.sql.adaptive.skewJoin.enabled = true. Your join has one key representing 80% of data. The job still times out. Why might AQE not be enough?",
+    options: [
+      "AQE skew handling only works with Broadcast Hash Joins, not Sort-Merge Joins",
+      "AQE detects skew by comparing partition sizes at runtime, but with extreme skew (one key at 80%), the single oversized partition may exceed what AQE can split effectively, especially after multiple prior stages where statistics degrade",
+      "AQE is disabled by default in Spark 3+ and the configuration has no effect",
+      "AQE can only handle skew on the left side of a join, not the right side"
+    ],
+    correct: 1,
+    explanation: "AQE works well for moderate skew. It detects oversized partitions during shuffles and splits them. But with extreme skew (80% of data in one key), the splitting may not be granular enough, or the statistics AQE collected from prior stages may not accurately reflect the actual skew. After several transformations and shuffles, AQE's runtime statistics degrade in accuracy. For extreme, known skew, manual salting gives you direct control over how the hot key is distributed."
+  },
+  {
+    question: "30% of your join key column is NULL. You run a Sort-Merge Join and the job is much slower than expected. What is the most likely cause?",
+    options: [
+      "NULL values cause a HashCollisionError during the shuffle phase",
+      "Spark skips NULL rows entirely during joins, so 30% of data is never processed",
+      "Hash(NULL) sends all NULL rows to the same partition, creating instant skew where 30% of the data concentrates on one executor",
+      "NULL keys force Spark to fall back to a Nested Loop Join, which is O(N*M)"
+    ],
+    correct: 2,
+    explanation: "Hash(NULL) produces a deterministic hash value, so ALL null-key rows land in the same partition. With 30% nulls, that's 30% of your data on one executor while the other executors handle the remaining 70% spread across many partitions. The fix is to filter out NULLs before the join and handle them separately with your business logic (discard, assign defaults, etc.)."
+  }
+];
+---
+
+<BaseLayout
+  title="Quiz: Data Skew | Spark Pill 5"
+  description="Test your understanding of Data Skew: how to detect it in the Spark UI, why it causes cascading failures, and how to fix it with salting and AQE."
+>
+  <section class="pill-quiz-page">
+    <div class="container">
+      <a href="/blog/spark-pill-5-data-skew" class="back-link">← Back to Pill 5</a>
+
+      <div class="pill-header">
+        <div class="badge badge-purple" style="margin-bottom: 0.5rem;">Pill 5 · Data Skew</div>
+        <h1>Quiz: Can You Diagnose and Fix Data Skew?</h1>
+        <p class="pill-lead">
+          These questions test whether you can identify skew from Spark UI metrics,
+          understand the failure cascade, and choose the right mitigation for
+          different scenarios.
+        </p>
+      </div>
+
+      <Quiz
+        title="Pill 5: Data Skew — Detection and Mitigation"
+        questions={questions}
+      />
+
+      <div class="pill-footer glass-card">
+        <h3>How did it go?</h3>
+        <p>
+          If you scored below 70%, re-read <strong>Pill 5</strong> with the Spark UI
+          open on a real job. Find a stage with skew (max >> P75) and trace the
+          cascade through the metrics. Theory sticks better when you see it live.
+        </p>
+        <div class="pill-footer-links">
+          <a href="/blog/spark-pill-5-data-skew" class="btn btn-secondary btn-sm">Re-read Pill 5</a>
+          <a href="/pills/quiz-pill-6" class="btn btn-primary btn-sm">Next: Pill 6 Quiz — Cache, Persist & Checkpoint</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .pill-quiz-page {
+    padding: 3.5rem 0 5rem;
+  }
+
+  .back-link {
+    display: inline-block;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.8rem;
+    transition: color 0.2s ease;
+  }
+  .back-link:hover {
+    color: var(--accent-indigo);
+  }
+
+  .pill-header {
+    max-width: 720px;
+    margin-bottom: 2rem;
+  }
+
+  .pill-header h1 {
+    font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+    margin-bottom: 0.8rem;
+    line-height: 1.3;
+  }
+
+  .pill-lead {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+    max-width: 640px;
+  }
+
+  .pill-footer {
+    margin-top: 2.5rem;
+    padding: 2rem;
+    background: var(--bg-card);
+  }
+
+  .pill-footer h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-main);
+  }
+
+  .pill-footer p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.7;
+    margin-bottom: 1.1rem;
+    max-width: 600px;
+  }
+
+  .pill-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+</style>

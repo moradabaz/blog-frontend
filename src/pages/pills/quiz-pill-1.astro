@@ -1,0 +1,184 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Quiz from '../../components/Quiz.astro';
+
+const questions = [
+  {
+    question: "In a MapReduce job, which phase is responsible for moving data between nodes so that all records with the same key end up on the same machine?",
+    options: [
+      "The Map phase, which sends keys directly to the correct reducer",
+      "The Shuffle phase, which repartitions and transfers data across the network by key",
+      "The Reduce phase, which pulls data from each mapper on demand",
+      "The Driver, which centralizes all data before redistributing it"
+    ],
+    correct: 1,
+    explanation: "The Shuffle is the phase between Map and Reduce where the real network I/O happens. Data is partitioned by key (usually via a hash function), sorted, and transferred across the network so that each reducer receives ALL records for its assigned keys. The mapper only transforms data locally. The reducer only combines what arrives."
+  },
+  {
+    question: "A mapper on Node 1 produces a record with key 'Spain'. Can the mapper decide which reducer will receive that record?",
+    options: [
+      "Yes, the mapper routes each record to the correct reducer based on the key",
+      "No. The mapper only applies a local transformation. The partitioner during the shuffle decides the destination using hash(key) % num_partitions",
+      "Yes, but only if the programmer explicitly configures the routing table",
+      "No, the Driver collects all mapper output and then distributes it to reducers"
+    ],
+    correct: 1,
+    explanation: "The mapper is a pure local function: it receives a row and emits (key, value) pairs. It has no knowledge of how many reducers exist or where its output will go. The partitioner, which runs as part of the shuffle framework, applies hash(key) % num_partitions to decide the destination partition for each record."
+  },
+  {
+    question: "You run this pipeline: df.filter(col('status') == 'active').select('name', 'email').groupBy('name').count(). How many stages does this create?",
+    options: [
+      "Three stages: one for filter, one for select, one for groupBy",
+      "One stage: Spark processes everything in a single pass",
+      "Two stages: filter + select run in one stage (narrow transforms), then groupBy triggers a shuffle creating a second stage",
+      "Four stages: one per transformation plus one for the count action"
+    ],
+    correct: 2,
+    explanation: "filter() and select() are narrow transformations. They process each partition independently without moving data, so Spark fuses them into a single stage. groupBy() is a wide transformation that requires a shuffle, which creates a stage boundary. Everything before the shuffle is Stage 1, and the shuffle plus aggregation is Stage 2."
+  },
+  {
+    question: "If you have 900GB of data split across 100 mapper tasks, approximately how much data does each mapper read?",
+    options: [
+      "900GB. Each mapper needs to see all the data to produce correct results",
+      "~9GB. Each mapper reads only its assigned split (900GB / 100)",
+      "It depends on the key distribution. Mappers with popular keys read more data",
+      "0GB. Mappers don't read from disk; they only process data already in memory"
+    ],
+    correct: 1,
+    explanation: "Input data is divided into splits and each mapper receives one split. With 900GB and 100 mapper tasks, each one reads approximately 9GB. Mappers work in complete isolation from each other. They know nothing about other mappers' data or keys. Key distribution affects the reduce phase, not the map phase."
+  },
+  {
+    question: "A colleague runs reduceByKey() on a dataset where one customer_id accounts for 75% of all records. The job takes 3 hours while the Spark UI shows 199 out of 200 tasks finishing in 2 minutes. What is happening?",
+    options: [
+      "The Spark UI is displaying incorrect metrics due to a known bug",
+      "The Driver is bottlenecking because it cannot coordinate 200 tasks efficiently",
+      "One reducer received 75% of the data (all records for that dominant key), creating a data skew bottleneck. The other 199 reducers finished fast but everyone waits for the slow one",
+      "The last task is running a more complex reduction algorithm than the others"
+    ],
+    correct: 2,
+    explanation: "This is data skew. The hash function is deterministic: same key always maps to the same partition. If one key dominates the data, a single reducer receives a disproportionate share. The other 199 tasks finish quickly and sit idle while that one task processes 75% of the data alone. This can cause spill to disk, garbage collection storms, and in extreme cases, out-of-memory failures."
+  },
+  {
+    question: "In Hadoop MapReduce, a pipeline with 5 transformation steps was painfully slow. Why did Spark's DAG model solve this?",
+    options: [
+      "Spark uses faster CPUs and more RAM than Hadoop clusters did",
+      "Spark eliminates the shuffle entirely, so there is no network I/O",
+      "Spark's DAG allows chaining transformations and keeping intermediate results in memory, instead of writing to HDFS (disk) after every Map-Reduce step",
+      "Spark compresses intermediate data so disk writes are 10x faster"
+    ],
+    correct: 2,
+    explanation: "In Hadoop, each Map-Reduce step was an independent job. The reducer wrote output to HDFS and the next job read it back from disk. Five steps meant 5 full disk write-read cycles. Spark's DAG plans the entire chain and passes intermediate data in memory between stages. Disk I/O only happens at shuffle boundaries and for fault tolerance, not between every step."
+  },
+  {
+    question: "Spark writes shuffle data to local disk during execution, even though it is marketed as an 'in-memory' engine. Why accept this cost?",
+    options: [
+      "It is a legacy limitation from Hadoop that has not been removed yet",
+      "Shuffle data is always too large to fit in memory",
+      "Fault tolerance. If a node dies mid-shuffle, the surviving nodes' shuffle files on disk are still intact. Without disk writes, a single node failure would force recomputation of the entire previous stage",
+      "Spark only writes to disk on clusters with less than 64GB of RAM per node"
+    ],
+    correct: 2,
+    explanation: "This is a deliberate design trade-off. RAM is fast (~100ns) but volatile: if a node loses power, its data disappears. Disk is slower (~10us for SSD) but persistent. By writing shuffle output to local disk, Spark ensures that if one node dies, only that node's work needs recomputation. The other nodes' shuffle data survives on their local disks. Spark pays the disk latency cost at shuffle time to avoid the catastrophic cost of re-executing an entire stage on failure."
+  }
+];
+---
+
+<BaseLayout
+  title="Quiz: MapReduce Fundamentals | Spark Pill 1"
+  description="Test your understanding of MapReduce phases, narrow vs wide transformations, data skew, and why Spark still uses the MapReduce model under the hood."
+>
+  <section class="pill-quiz-page">
+    <div class="container">
+      <a href="/blog/spark-pill-1-what-is-mapreduce" class="back-link">&larr; Back to Pill 1</a>
+
+      <div class="pill-header">
+        <div class="badge badge-purple" style="margin-bottom: 0.5rem;">Pill 1 · MapReduce</div>
+        <h1>Quiz: MapReduce Fundamentals</h1>
+        <p class="pill-lead">
+          These questions test whether you can reason about what happens physically
+          during a MapReduce job: where data moves, why it moves, and what makes
+          the shuffle expensive. Not memorization, but understanding.
+        </p>
+      </div>
+
+      <Quiz
+        title="Pill 1: MapReduce & Distributed Computing"
+        questions={questions}
+      />
+
+      <div class="pill-footer glass-card">
+        <h3>How did it go?</h3>
+        <p>
+          If you scored below 70%, re-read <strong>Pill 1</strong>. Focus on the
+          Lego analogy and the narrow vs wide table. Try to explain each phase
+          out loud before moving on.
+        </p>
+        <div class="pill-footer-links">
+          <a href="/blog/spark-pill-1-what-is-mapreduce" class="btn btn-secondary btn-sm">Re-read Pill 1</a>
+          <a href="/pills/quiz-pill-2" class="btn btn-primary btn-sm">Next: Pill 2 Quiz &mdash; Lazy Evaluation & DAG</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .pill-quiz-page {
+    padding: 3.5rem 0 5rem;
+  }
+
+  .back-link {
+    display: inline-block;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.8rem;
+    transition: color 0.2s ease;
+  }
+  .back-link:hover {
+    color: var(--accent-indigo);
+  }
+
+  .pill-header {
+    max-width: 720px;
+    margin-bottom: 2rem;
+  }
+
+  .pill-header h1 {
+    font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+    margin-bottom: 0.8rem;
+    line-height: 1.3;
+  }
+
+  .pill-lead {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+    max-width: 640px;
+  }
+
+  .pill-footer {
+    margin-top: 2.5rem;
+    padding: 2rem;
+    background: var(--bg-card);
+  }
+
+  .pill-footer h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-main);
+  }
+
+  .pill-footer p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.7;
+    margin-bottom: 1.1rem;
+    max-width: 600px;
+  }
+
+  .pill-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+</style>

@@ -1,0 +1,184 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Quiz from '../../components/Quiz.astro';
+
+const questions = [
+  {
+    question: "You call df.persist() on a DataFrame. What happens at that exact moment?",
+    options: [
+      "Spark computes the DataFrame and stores the result in executor memory",
+      "Spark triggers the DAG, computes the result, and writes it to disk as a checkpoint",
+      "Nothing. persist() sets a flag telling executors to cache the result when an action eventually triggers computation",
+      "Spark sends the DataFrame to the Driver for storage in the Driver's heap"
+    ],
+    correct: 2,
+    explanation: "persist() is NOT an action. It does not trigger computation. It sets a flag on the DataFrame that tells executors: 'when you compute this for the first time (triggered by a later action like .show() or .write()), save the result for reuse.' Until an action runs, persist() has zero effect on execution."
+  },
+  {
+    question: "A pipeline reads from an Iceberg table with months of snapshots, transforms the data, and writes three output tables. The engineer adds persist() before the writes. Individual tasks finish in sub-seconds, but the total job takes 80 minutes. What's the bottleneck?",
+    options: [
+      "The executors are spilling cached data to disk because of insufficient memory",
+      "The persist() is storing too much data, filling executor heap and causing GC pauses",
+      "Layer 1 (Driver planning): Catalyst processes the full logical plan tree for each .write() call, and persist() is invisible to Catalyst, so the deep Iceberg metadata tree is resolved three times in the single-threaded Driver",
+      "The three writes are serialized and each waits for the previous one to complete"
+    ],
+    correct: 2,
+    explanation: "persist() is a Layer 2 (Executor) concept. Catalyst, the query optimizer on the Driver, does not see it. For each .write() action, Catalyst must build and optimize the full logical plan from scratch, including resolving the Iceberg table's metadata tree. With months of snapshots, this metadata tree is deep, and processing it is slow. Three writes means three full planning passes in a single thread. The fix is checkpoint(), which severs the plan and gives Catalyst a simple file scan instead."
+  },
+  {
+    question: "What is the key difference between persist() and checkpoint()?",
+    options: [
+      "persist() stores data in memory, checkpoint() stores it on disk. They are otherwise identical.",
+      "persist() caches executor-side results (Layer 2) but does not affect Catalyst's logical plan. checkpoint() materializes data to storage AND returns a new DataFrame with a fresh, shallow plan, cutting the upstream tree from Catalyst's view (both layers).",
+      "persist() is lazy, checkpoint() is eager. Both affect only the execution layer.",
+      "persist() works with Parquet sources, checkpoint() works with Iceberg and Delta sources."
+    ],
+    correct: 1,
+    explanation: "This is the crucial distinction. persist() only tells executors to cache computed results. Catalyst still sees and processes the full upstream plan tree for every action. checkpoint() materializes the data to storage (S3/HDFS) and returns a new DataFrame whose logical plan starts from those checkpoint files. The upstream tree disappears from Catalyst's view. This is why checkpoint() fixes the lineage trap: it operates on both Layer 1 (planning) and Layer 2 (execution)."
+  },
+  {
+    question: "You use MEMORY_ONLY storage level with persist(). Your cached DataFrame has 200 partitions, but only 150 fit in executor memory. What happens to the other 50?",
+    options: [
+      "Spark throws an OutOfMemoryError because the data doesn't fit",
+      "The 50 extra partitions spill to the executor's local disk automatically",
+      "The 50 partitions that don't fit are silently discarded. When accessed, Spark recomputes them from the DAG on demand.",
+      "Spark evicts the oldest 50 partitions and replaces them with the newest ones"
+    ],
+    correct: 2,
+    explanation: "With MEMORY_ONLY, partitions that don't fit in memory are discarded, not spilled. When your code later accesses those partitions, Spark recomputes them from the original DAG. You pay the computation cost again without any visible error or warning. If you want partitions to spill to disk instead of being discarded, use MEMORY_AND_DISK (the default for cache())."
+  },
+  {
+    question: "An engineer writes: df.persist(), then several transformations building on df, then df.unpersist(), and finally df.show(). What happens?",
+    options: [
+      "The cached data is served for .show() because persist() already materialized it",
+      "The show() triggers computation and stores the result, then unpersist() cleans it up afterward",
+      "The cache was never populated because no action ran between persist() and unpersist(). The persist/unpersist pair was a no-op. show() computes everything from scratch.",
+      "Spark throws an error because you cannot call show() after unpersist()"
+    ],
+    correct: 2,
+    explanation: "This is the 'phantom cache' anti-pattern. persist() only sets a flag; it does not trigger computation. unpersist() removes the flag. Since no action (show, count, write) ran between them, the cache was never populated. When show() finally runs, the persist flag is already gone, so Spark computes the full DAG from scratch. Always trigger an action between persist() and unpersist() to ensure the cache is actually populated."
+  },
+  {
+    question: "Your Spark job has these symptoms: tasks finish in milliseconds, adding executors and memory changes nothing, the source is an Iceberg table with 18 months of snapshot history, and the total job takes 45 minutes. Which solution addresses the root cause?",
+    options: [
+      "Increase spark.sql.shuffle.partitions to create more parallelism",
+      "Add persist(MEMORY_AND_DISK) before the write actions to avoid recomputation",
+      "Use checkpoint() to materialize the data and give Catalyst a fresh plan that starts from flat files instead of the deep Iceberg metadata tree",
+      "Switch from Iceberg to Parquet to avoid the snapshot overhead"
+    ],
+    correct: 2,
+    explanation: "The symptoms point clearly to a Layer 1 (planning) bottleneck: fast tasks (Layer 2 is fine), no benefit from more resources (Layer 2 is not the bottleneck), deep Iceberg history (planning cost). persist() would not help because it does not affect Catalyst's planning. checkpoint() severs the logical plan: Catalyst sees a simple file scan instead of 18 months of Iceberg snapshots. Switching to Parquet (option D) might work but is a drastic change; checkpoint() solves the planning issue without changing the source format."
+  },
+  {
+    question: "You have three DataFrames: df_a and df_b are persisted base tables, df_c = df_a.join(df_b) is also persisted. After writing output_1, you unpersist df_c, then df_a, then try to write output_2 from df_c. What goes wrong?",
+    options: [
+      "Nothing goes wrong. df_c was already computed and written, so output_2 uses the saved result.",
+      "df_c must be recomputed from scratch, which requires df_a, but df_a was also unpersisted. Recomputing both simultaneously while df_b is still cached can cause a memory spike or OOM.",
+      "Spark throws a ReferenceError because df_c was unpersisted and can no longer be accessed",
+      "df_b's cache is automatically invalidated when df_a is unpersisted, causing a full recomputation chain"
+    ],
+    correct: 1,
+    explanation: "When df_c is unpersisted, Spark must recompute it from its DAG: the join of df_a and df_b. But df_a is also unpersisted, so it must be recomputed from source too. Now the executor is simultaneously recomputing df_a from source, holding df_b in cache, and building df_c. This memory peak can exceed what was needed when all three were cached in order. The fix: unpersist in reverse dependency order (df_c last), and only after all writes that depend on the cached data are complete."
+  }
+];
+---
+
+<BaseLayout
+  title="Quiz: Cache, Persist & Checkpoint | Spark Pill 6"
+  description="Test your understanding of persist vs checkpoint, storage levels, the lineage trap, and the anti-patterns that cause phantom caches and OOM."
+>
+  <section class="pill-quiz-page">
+    <div class="container">
+      <a href="/blog/spark-pill-6-cache-persist-checkpoint" class="back-link">← Back to Pill 6</a>
+
+      <div class="pill-header">
+        <div class="badge badge-purple" style="margin-bottom: 0.5rem;">Pill 6 · Cache, Persist & Checkpoint</div>
+        <h1>Quiz: Can You Navigate the Lineage Trap?</h1>
+        <p class="pill-lead">
+          These questions test whether you understand the two-layer model,
+          why persist() is invisible to Catalyst, and how checkpoint() solves
+          problems that no amount of memory or executors can fix.
+        </p>
+      </div>
+
+      <Quiz
+        title="Pill 6: Cache, Persist, and Checkpoint"
+        questions={questions}
+      />
+
+      <div class="pill-footer glass-card">
+        <h3>How did it go?</h3>
+        <p>
+          If you scored below 70%, re-read <strong>Pill 6</strong> with this mental model:
+          draw two boxes labeled "Driver (Layer 1)" and "Executors (Layer 2)." For each
+          Spark API call, ask yourself which box it affects. That separation is the key
+          to understanding caching behavior.
+        </p>
+        <div class="pill-footer-links">
+          <a href="/blog/spark-pill-6-cache-persist-checkpoint" class="btn btn-secondary btn-sm">Re-read Pill 6</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .pill-quiz-page {
+    padding: 3.5rem 0 5rem;
+  }
+
+  .back-link {
+    display: inline-block;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.8rem;
+    transition: color 0.2s ease;
+  }
+  .back-link:hover {
+    color: var(--accent-indigo);
+  }
+
+  .pill-header {
+    max-width: 720px;
+    margin-bottom: 2rem;
+  }
+
+  .pill-header h1 {
+    font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+    margin-bottom: 0.8rem;
+    line-height: 1.3;
+  }
+
+  .pill-lead {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+    max-width: 640px;
+  }
+
+  .pill-footer {
+    margin-top: 2.5rem;
+    padding: 2rem;
+    background: var(--bg-card);
+  }
+
+  .pill-footer h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-main);
+  }
+
+  .pill-footer p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.7;
+    margin-bottom: 1.1rem;
+    max-width: 600px;
+  }
+
+  .pill-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+</style>

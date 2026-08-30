@@ -1,0 +1,184 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Quiz from '../../components/Quiz.astro';
+
+const questions = [
+  {
+    question: "During Spark's sort-based shuffle, what does each mapper (executor) produce on its local disk?",
+    options: [
+      "One file per destination partition, each containing the rows for that partition",
+      "A single shuffle file with records sorted by destination partition, plus an index file that records the offset and length of each partition's data",
+      "A compressed archive of all records, which the reducers decompress on arrival",
+      "Nothing. The mapper sends data directly to the reducers over TCP without touching disk"
+    ],
+    correct: 1,
+    explanation: "In the sort-based shuffle (Spark's default since version 1.2), each mapper writes ONE shuffle file per map task. Records are sorted by their destination partition key, and a separate index file records where each partition's data starts and ends. This lets reducers request just the byte range they need, without the mapper creating thousands of small files (which was a problem with the older hash-based shuffle manager)."
+  },
+  {
+    question: "How does Spark decide which partition a row belongs to during a shuffle?",
+    options: [
+      "Round-robin: rows are assigned to partitions in sequence, cycling through all available partitions",
+      "The Driver inspects each row and assigns it to the least-loaded partition",
+      "hash(key) % num_partitions: a deterministic hash function applied to the row's key, modulo the number of output partitions",
+      "Random assignment: each row is sent to a randomly chosen partition to ensure even distribution"
+    ],
+    correct: 2,
+    explanation: "Spark uses hash(key) % num_partitions as the default partitioner. This is deterministic: the same key always maps to the same partition, every time, on every executor. This guarantees that all rows with the same key end up together on the same reducer. The downside is that if one key dominates the dataset, its partition gets disproportionately large (data skew)."
+  },
+  {
+    question: "Your Spark job is slow during the shuffle phase. A colleague suggests adding more RAM to each executor. Will this help?",
+    options: [
+      "Yes. More RAM means Spark can hold more shuffle data in memory and avoid disk writes entirely",
+      "Yes. The shuffle bottleneck is always memory pressure from the hash map used during aggregation",
+      "No. The shuffle bottleneck is network I/O (transferring data between nodes) and disk I/O (writing shuffle files), not RAM. More RAM does not speed up network or disk transfers",
+      "No, but only because Spark ignores additional RAM once the executor reaches its configured memory limit"
+    ],
+    correct: 2,
+    explanation: "The shuffle's cost is dominated by serialization, local disk writes, network transfer, and deserialization. Adding RAM helps if executors are spilling during aggregation (a memory pressure problem), but it does not make the network faster or reduce the amount of data that must be written to local shuffle files. To speed up shuffles, you need faster network bandwidth, faster local disks (NVMe SSDs), fewer wide transformations, or less data to shuffle (by filtering earlier in the pipeline)."
+  },
+  {
+    question: "A narrow transformation like filter() or withColumn() operates at approximately what speed, and why?",
+    options: [
+      "Network speed (~10Gbps), because data is distributed across the cluster",
+      "Disk speed (~10 microseconds per access), because Spark always reads from Parquet files on disk",
+      "RAM speed (~100 nanoseconds per access), because narrow transforms work on local data already in the executor's memory, with no network or disk I/O involved",
+      "CPU speed (~1 nanosecond), because filters are purely computational with no memory access"
+    ],
+    correct: 2,
+    explanation: "Narrow transformations process data that is already local to the executor. Each partition sits in the executor's RAM (or is read from local disk if spilled). The executor reads rows from local memory, applies the transformation, and writes results to local memory. No serialization, no network transfer, no shuffle files. This is why experienced Spark engineers push as many narrow transforms as possible before any wide transform: you are working at RAM speed instead of network speed."
+  },
+  {
+    question: "Why does Spark write shuffle data to local disk instead of keeping it purely in memory?",
+    options: [
+      "Spark's JVM cannot allocate enough off-heap memory for shuffle data",
+      "Fault tolerance. If a node dies mid-shuffle, disk-backed shuffle data from surviving nodes is still intact. Without disk writes, a node failure would force recomputation of the entire previous stage from all surviving nodes as well",
+      "Performance. Local disk I/O is actually faster than memory I/O for large sequential writes",
+      "Regulation. Production clusters are required to persist all intermediate data for audit purposes"
+    ],
+    correct: 1,
+    explanation: "RAM is fast but volatile: power loss erases everything. If shuffle data were only in RAM and a node died, all its shuffle output would be lost. Reducers assigned to pull from that node would fail, and Spark would need to re-execute the entire previous stage for those partitions. By writing to local disk, the surviving nodes' shuffle data persists through failures. Only the dead node's work needs recomputation. Spark trades disk latency for resilience."
+  },
+  {
+    question: "Which of these operations triggers a shuffle? select('name', 'email').filter(col('age') > 18).distinct()",
+    options: [
+      "All three: select, filter, and distinct each trigger a separate shuffle",
+      "Only distinct(). select() and filter() are narrow transforms that process each partition locally. distinct() must compare rows across all partitions to find duplicates, requiring a shuffle",
+      "None. Spark optimizes the entire chain into a single local operation using Catalyst",
+      "Only filter(), because it must evaluate the condition against every row in the dataset across all nodes"
+    ],
+    correct: 1,
+    explanation: "select() picks columns locally. filter() evaluates a condition on each row locally. Neither needs to move data between nodes. distinct(), however, must guarantee that no duplicate rows exist across the entire dataset. A value on Node 1 might also exist on Node 3. Spark uses a shuffle to send all rows with the same hash to the same partition, where duplicates can be detected and removed locally."
+  },
+  {
+    question: "During a groupBy aggregation, an executor runs out of memory while building its in-memory hash map of partial results. What happens?",
+    options: [
+      "The executor crashes with an OutOfMemoryError and the task fails",
+      "Spark pauses the task and waits for other tasks to free memory",
+      "Spark spills the current hash map contents to a sorted file on local disk, frees the memory, continues building a new hash map, and later merges the in-memory and on-disk results",
+      "Spark sends the overflow data to another executor with more available memory"
+    ],
+    correct: 2,
+    explanation: "Spill to disk is Spark's safety valve for memory pressure. When the in-memory structure (hash map, sort buffer, etc.) grows too large, Spark writes its contents to a sorted file on the local SSD, frees the memory, and keeps processing. At the end, it merges the in-memory data with all spilled files to produce the correct result. This is slower than pure in-memory processing but prevents crashes. Heavy spilling in the Spark UI is a signal to increase executor memory or reduce partition sizes."
+  }
+];
+---
+
+<BaseLayout
+  title="Quiz: The Shuffle | Spark Pill 3"
+  description="Test your understanding of Spark's shuffle internals: sort-based shuffle mechanics, hash partitioning, network bottlenecks, fault tolerance trade-offs, and spill to disk."
+>
+  <section class="pill-quiz-page">
+    <div class="container">
+      <a href="/blog/spark-pill-3-the-shuffle" class="back-link">&larr; Back to Pill 3</a>
+
+      <div class="pill-header">
+        <div class="badge badge-purple" style="margin-bottom: 0.5rem;">Pill 3 · The Shuffle</div>
+        <h1>Quiz: Shuffle Internals & I/O Trade-offs</h1>
+        <p class="pill-lead">
+          These questions test whether you understand what happens physically
+          during a shuffle: where bytes go, what costs dominate, and why Spark
+          chooses disk writes over pure in-memory execution.
+        </p>
+      </div>
+
+      <Quiz
+        title="Pill 3: The Shuffle & Disk I/O"
+        questions={questions}
+      />
+
+      <div class="pill-footer glass-card">
+        <h3>Want to go deeper?</h3>
+        <p>
+          If you scored below 70%, re-read <strong>Pill 3</strong>. Pay close
+          attention to the step-by-step shuffle diagram and the fault tolerance
+          comparison. Try explaining the shuffle to a colleague in your own words.
+        </p>
+        <div class="pill-footer-links">
+          <a href="/blog/spark-pill-3-the-shuffle" class="btn btn-secondary btn-sm">Re-read Pill 3</a>
+          <a href="/blog/spark-pill-2-lazy-evaluation-and-dag" class="btn btn-secondary btn-sm">Review Pill 2</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .pill-quiz-page {
+    padding: 3.5rem 0 5rem;
+  }
+
+  .back-link {
+    display: inline-block;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.8rem;
+    transition: color 0.2s ease;
+  }
+  .back-link:hover {
+    color: var(--accent-indigo);
+  }
+
+  .pill-header {
+    max-width: 720px;
+    margin-bottom: 2rem;
+  }
+
+  .pill-header h1 {
+    font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+    margin-bottom: 0.8rem;
+    line-height: 1.3;
+  }
+
+  .pill-lead {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+    max-width: 640px;
+  }
+
+  .pill-footer {
+    margin-top: 2.5rem;
+    padding: 2rem;
+    background: var(--bg-card);
+  }
+
+  .pill-footer h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-main);
+  }
+
+  .pill-footer p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.7;
+    margin-bottom: 1.1rem;
+    max-width: 600px;
+  }
+
+  .pill-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+</style>

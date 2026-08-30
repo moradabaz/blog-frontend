@@ -58,6 +58,13 @@ const quizId = `quiz-${Math.random().toString(36).slice(2, 9)}`;
 
   <!-- Footer -->
   <div class="quiz-footer">
+    <button class="quiz-btn quiz-btn-reset" hidden>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="1 4 1 10 7 10"/>
+        <path d="M3.51 15a9 9 0 102.13-9.36L1 10"/>
+      </svg>
+      Try again
+    </button>
     <button class="quiz-btn quiz-btn-next" hidden>
       Next
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -108,6 +115,7 @@ const quizId = `quiz-${Math.random().toString(36).slice(2, 9)}`;
     const resultsTitle = wrapper.querySelector('.quiz-results-title') as HTMLElement;
     const resultsScore = wrapper.querySelector('.quiz-results-score') as HTMLElement;
     const resultsBreakdown = wrapper.querySelector('.quiz-results-breakdown') as HTMLElement;
+    const resetBtn = wrapper.querySelector('.quiz-btn-reset') as HTMLButtonElement;
     const retryBtn = wrapper.querySelector('.quiz-btn-retry') as HTMLButtonElement;
     const footer = wrapper.querySelector('.quiz-footer') as HTMLElement;
 
@@ -132,9 +140,10 @@ const quizId = `quiz-${Math.random().toString(36).slice(2, 9)}`;
         optionsEl.appendChild(btn);
       });
 
-      // Hide feedback & next
+      // Hide feedback & buttons
       feedbackEl.hidden = true;
       nextBtn.hidden = true;
+      resetBtn.hidden = true;
       body.hidden = false;
       footer.hidden = false;
       resultsEl.hidden = true;
@@ -169,7 +178,8 @@ const quizId = `quiz-${Math.random().toString(36).slice(2, 9)}`;
       feedbackIcon.textContent = isCorrect ? '✓' : '✗';
       feedbackText.textContent = q.explanation;
 
-      // Show next or finish
+      // Show reset and next
+      resetBtn.hidden = false;
       nextBtn.hidden = false;
       nextBtn.textContent = current < questions.length - 1 ? '' : '';
       nextBtn.innerHTML = current < questions.length - 1
@@ -205,6 +215,13 @@ const quizId = `quiz-${Math.random().toString(36).slice(2, 9)}`;
         resultsBreakdown.appendChild(row);
       });
     }
+
+    resetBtn.addEventListener('click', () => {
+      // Undo the last answer
+      const wasCorrect = answers.pop();
+      if (wasCorrect) score--;
+      render();
+    });
 
     nextBtn.addEventListener('click', () => {
       if (current < questions.length - 1) {
@@ -410,6 +427,7 @@ const quizId = `quiz-${Math.random().toString(36).slice(2, 9)}`;
     padding: 0 1.75rem 1.5rem;
     display: flex;
     justify-content: flex-end;
+    gap: 0.5rem;
   }
 
   .quiz-btn {
@@ -424,6 +442,17 @@ const quizId = `quiz-${Math.random().toString(36).slice(2, 9)}`;
     cursor: pointer;
     border: none;
     transition: all 0.15s ease;
+  }
+
+  .quiz-btn-reset {
+    background: var(--bg-card);
+    color: var(--text-muted);
+    border: 1px solid var(--border-color);
+  }
+  .quiz-btn-reset:hover {
+    background: var(--bg-subtle);
+    border-color: var(--border-color-hover);
+    color: var(--text-main);
   }
 
   .quiz-btn-next {

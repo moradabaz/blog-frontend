@@ -1,0 +1,185 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Quiz from '../../components/Quiz.astro';
+
+const questions = [
+  {
+    question: "Your Iceberg table has been running daily INSERT and MERGE operations for 4 months. The Driver now crashes with OutOfMemory before processing any data. The executors show zero activity. What is the most likely cause?",
+    options: [
+      "The data files have grown too large for the cluster's total memory",
+      "Old snapshots have accumulated because Iceberg does not auto-delete them. The Driver tries to load hundreds of megabytes of metadata into its heap and runs out of memory",
+      "The executors are stealing memory from the Driver through the shuffle",
+      "The Parquet files have become corrupted after too many write operations"
+    ],
+    correct: 1,
+    explanation: "Every write to an Iceberg table creates a new snapshot, and Iceberg does not automatically remove old ones. After 4 months of daily operations, hundreds of snapshots accumulate, each with its own manifest list and manifest files. When Spark opens the table, the Driver (a single process with typically 4-8 GB of heap) must load all this metadata. Once it exceeds the heap, you get an OOM error before any data is processed. The fix is scheduled maintenance: expire_snapshots() and rewrite_manifests()."
+  },
+  {
+    question: "A pipeline writes to an Iceberg table partitioned by event_month with fanout-enabled = false (ClusteredWriter). The data comes from PostgreSQL via JDBC, ordered by UUID primary key. What happens?",
+    options: [
+      "The write succeeds but creates many small files because the rows arrive in random partition order",
+      "The write throws IllegalStateException because ClusteredWriter requires rows sorted by partition column, and UUID order does not match event_month order",
+      "The write succeeds because repartition() is automatically applied by Iceberg before writing",
+      "The write is slower than normal but completes correctly"
+    ],
+    correct: 1,
+    explanation: "ClusteredWriter (fanout-enabled = false) keeps only one file writer open at a time. It writes all rows for one partition, closes the writer, and opens the next. If a row for a previously closed partition arrives, it throws IllegalStateException. Since PostgreSQL returns rows ordered by UUID (not by event_month), rows from different months are interleaved. The fix is either using FanoutWriter (more RAM) or adding repartition('event_month').sortWithinPartitions('event_month') before writing."
+  },
+  {
+    question: "You need to write to a partitioned Iceberg table using ClusteredWriter. You add .repartition('partition_col') before the write. Is this sufficient?",
+    options: [
+      "Yes, repartition guarantees that rows arrive sorted by the partition column",
+      "No. repartition groups rows by partition column but does not sort them within each partition. You also need .sortWithinPartitions('partition_col') to guarantee order",
+      "Yes, as long as you also set spark.sql.shuffle.partitions to match the number of distinct partition values",
+      "No. ClusteredWriter requires the data to be written to a temporary staging table first"
+    ],
+    correct: 1,
+    explanation: "repartition('col') ensures that all rows with the same partition value end up on the same executor. But within that executor's partition, the rows can arrive in any order. ClusteredWriter needs rows sorted by the partition column so it can process partitions sequentially without reopening a closed writer. You must chain .repartition('col').sortWithinPartitions('col') to guarantee both grouping and order."
+  },
+  {
+    question: "An Iceberg table is partitioned by event_month. You run: DELETE FROM events WHERE account_id IN (101, 102, ..., 265). The delete targets 3% of accounts across all months. What happens during execution?",
+    options: [
+      "Iceberg uses the account_id index to find and delete only the matching rows efficiently",
+      "Iceberg prunes partitions to only scan months where those accounts appear, making the delete fast",
+      "Iceberg must scan every data file in every partition because account_id is not the partition key. It reads each file, filters out matching rows, and writes a new version of the file",
+      "Iceberg marks the rows as deleted in a separate delete file without touching the original data files"
+    ],
+    correct: 2,
+    explanation: "Iceberg uses partition pruning based on the partition key (event_month), not on arbitrary columns. Since account_id is not the partition key, Iceberg cannot determine which files contain those accounts without reading them all. It scans every file in every partition, removes the matching rows, and writes new versions of the affected files. In real production cases, this copy-on-write approach for non-partition-key deletes can be slower than simply rewriting the entire table with a filter."
+  },
+  {
+    question: "A team debates whether to use Iceberg or plain Parquet for a small reference table (50,000 rows) that is fully rewritten every 6 hours. Nobody reads historical versions. Which is the better choice?",
+    options: [
+      "Iceberg, because it provides schema evolution and ACID writes regardless of table size",
+      "Plain Parquet with overwrite. The table is small, fully rewritten each time, and no one needs time travel. Iceberg adds metadata overhead and maintenance requirements for no benefit in this case",
+      "Iceberg, because Parquet files cannot be safely overwritten without ACID guarantees",
+      "Neither. A table this small should be stored in a relational database"
+    ],
+    correct: 1,
+    explanation: "Iceberg's strengths (incremental updates, time travel, ACID concurrent access, schema evolution) provide no value for a small table that is fully rewritten and has no need for historical versions. Plain Parquet with atomic overwrite (write to a temp location, then rename) is simpler, requires no snapshot maintenance, and has zero metadata overhead. Using Iceberg here adds complexity (maintenance jobs, metadata accumulation) without benefit."
+  },
+  {
+    question: "After migrating to Iceberg, you notice that rewrite_data_files returns successfully but reports 0 files rewritten. Your table still has 3,000 small files. What is the most likely explanation?",
+    options: [
+      "rewrite_data_files is broken and needs a newer Iceberg version",
+      "The small files already meet the target file size threshold. rewrite_data_files only rewrites files that fall below or above the configured size bounds. You need to adjust the target-file-size-bytes parameter",
+      "Iceberg is waiting for snapshots to expire before it can compact the files",
+      "The table is locked by another process, preventing compaction"
+    ],
+    correct: 1,
+    explanation: "rewrite_data_files compacts files that are below the minimum or above the maximum file size thresholds. If your 3,000 small files each happen to be above the minimum threshold (or the defaults do not match your situation), the procedure considers them acceptable and does nothing. Always check the return value: 0 rewritten files means the thresholds need adjusting, not that compaction succeeded."
+  },
+  {
+    question: "You want to replace all data in an Iceberg table. A colleague suggests TRUNCATE followed by INSERT. What is the risk compared to INSERT OVERWRITE?",
+    options: [
+      "No risk. TRUNCATE + INSERT is equivalent to INSERT OVERWRITE in Iceberg",
+      "TRUNCATE + INSERT is actually faster because it skips the metadata comparison step",
+      "If the INSERT fails after the TRUNCATE, you have an empty table with no easy way to recover. INSERT OVERWRITE is atomic: the old data is only replaced when the new write succeeds",
+      "The risk is that TRUNCATE deletes the table's schema, requiring you to recreate it"
+    ],
+    correct: 2,
+    explanation: "TRUNCATE + INSERT is a two-step operation. If the INSERT fails (executor OOM, S3 timeout, network issue), TRUNCATE has already removed the data and you are left with an empty table. INSERT OVERWRITE is atomic: Iceberg writes the new data files first, and only updates the metadata pointer to the new snapshot when the write completes. If the write fails, the old snapshot remains untouched. Always prefer the atomic operation."
+  }
+];
+---
+
+<BaseLayout
+  title="Quiz: Iceberg Pitfalls | Spark Pill 8"
+  description="Test your understanding of Apache Iceberg's hidden costs: metadata accumulation, writer semantics, delete performance, and when plain Parquet is the better choice."
+>
+  <section class="pill-quiz-page">
+    <div class="container">
+      <a href="/blog/spark-pill-8-iceberg-pitfalls" class="back-link">← Back to Pill 8</a>
+
+      <div class="pill-header">
+        <div class="badge badge-purple" style="margin-bottom: 0.5rem;">Pill 8 · Iceberg Pitfalls</div>
+        <h1>Quiz: Do You Know the Hidden Costs of Iceberg?</h1>
+        <p class="pill-lead">
+          These questions test whether you understand the operational realities of
+          running Iceberg in production: metadata growth, writer behavior, delete
+          performance, and when Iceberg adds more complexity than value.
+        </p>
+      </div>
+
+      <Quiz
+        title="Pill 8: Iceberg Production Pitfalls"
+        questions={questions}
+      />
+
+      <div class="pill-footer glass-card">
+        <h3>How did it go?</h3>
+        <p>
+          If you scored below 70%, re-read <strong>Pill 8</strong> with a focus on
+          the metadata lifecycle and the ClusteredWriter vs FanoutWriter distinction.
+          These are the two areas that cause the most production incidents after an
+          Iceberg migration.
+        </p>
+        <div class="pill-footer-links">
+          <a href="/blog/spark-pill-8-iceberg-pitfalls" class="btn btn-secondary btn-sm">Re-read Pill 8</a>
+          <a href="/pills/quiz-pill-9" class="btn btn-primary btn-sm">Next: Pill 9 Quiz — Streaming & State</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .pill-quiz-page {
+    padding: 3.5rem 0 5rem;
+  }
+
+  .back-link {
+    display: inline-block;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.8rem;
+    transition: color 0.2s ease;
+  }
+  .back-link:hover {
+    color: var(--accent-indigo);
+  }
+
+  .pill-header {
+    max-width: 720px;
+    margin-bottom: 2rem;
+  }
+
+  .pill-header h1 {
+    font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+    margin-bottom: 0.8rem;
+    line-height: 1.3;
+  }
+
+  .pill-lead {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+    max-width: 640px;
+  }
+
+  .pill-footer {
+    margin-top: 2.5rem;
+    padding: 2rem;
+    background: var(--bg-card);
+  }
+
+  .pill-footer h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-main);
+  }
+
+  .pill-footer p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.7;
+    margin-bottom: 1.1rem;
+    max-width: 600px;
+  }
+
+  .pill-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+</style>

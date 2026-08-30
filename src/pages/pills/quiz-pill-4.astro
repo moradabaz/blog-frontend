@@ -1,0 +1,183 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Quiz from '../../components/Quiz.astro';
+
+const questions = [
+  {
+    question: "You're joining a 500 million row table with a 3,000 row lookup table. Both fit comfortably in the cluster. What's the best join strategy and why?",
+    options: [
+      "Sort-Merge Join, because it handles any table size and is always the safest choice",
+      "Broadcast Hash Join, because the 3K row table can be sent to every executor as a HashMap, eliminating the shuffle entirely",
+      "Broadcast Hash Join on the 500M row table, so each executor has instant access to all data",
+      "Sort-Merge Join with bucketing, because the tables should be pre-sorted before joining"
+    ],
+    correct: 1,
+    explanation: "The 3K row table is tiny. Broadcasting it to every executor means each executor can look up join keys in a local HashMap with O(1) cost per row. The big table never shuffles. Total cost is O(N + M) with zero network transfer for the big table. Broadcasting the big table (option C) would cause an instant OOM."
+  },
+  {
+    question: "A colleague sets spark.sql.autoBroadcastJoinThreshold to 2GB to 'make all joins fast.' What's the likely outcome?",
+    options: [
+      "All joins will use Broadcast Hash Join and run faster across the board",
+      "Spark will try to broadcast tables up to 2GB to every executor, which will likely cause OutOfMemoryError on executors that can't hold the full HashMap in heap",
+      "Nothing changes because Spark ignores thresholds above 512MB",
+      "Only tables exactly 2GB will be broadcast; smaller tables still use Sort-Merge"
+    ],
+    correct: 1,
+    explanation: "When Spark broadcasts a table, every executor must hold the entire table as a deserialized HashMap in its JVM heap. A 2GB table serialized might expand to 4-6GB as Java objects in memory. If your executors have 4GB of heap allocated for execution, they will run out of memory. The 10MB default is conservative precisely to avoid this. Broadcast Hash Join has no disk spill fallback: the table either fits or the executor dies."
+  },
+  {
+    question: "Your pipeline joins orders (200M rows) with order_items (800M rows) on order_id. Both tables are large. What happens during a Sort-Merge Join?",
+    options: [
+      "Spark loads both tables into memory on the Driver, sorts them, and distributes the result",
+      "Both tables are shuffled by Hash(order_id) % num_partitions so matching keys land on the same executor, then each partition is sorted locally, and the two sorted streams are merged",
+      "Spark picks the smaller table (orders) and broadcasts it, then sorts the larger table",
+      "Both tables are sorted globally across the cluster, then a single executor performs the merge"
+    ],
+    correct: 1,
+    explanation: "Sort-Merge Join has three phases: (1) shuffle both tables by Hash(join_key) % num_partitions so all rows with the same order_id end up on the same executor, (2) sort each partition locally by the join key, (3) merge the two sorted streams on each executor by walking through both simultaneously. The sorting and merging happen in parallel across all executors. This is robust because sorted streams can spill to disk without OOM."
+  },
+  {
+    question: "Two Gold-layer tables (customers and transactions) are always joined on customer_id by 15 different downstream pipelines. Each join triggers a full shuffle of both tables. What optimization eliminates this repeated shuffle?",
+    options: [
+      "Caching both tables with persist(MEMORY_AND_DISK) so the shuffle result stays in memory",
+      "Bucketing both tables by customer_id with the same number of buckets at write time, so Spark can match buckets directly without shuffling or sorting at read time",
+      "Increasing spark.sql.shuffle.partitions to reduce per-partition data size",
+      "Using F.broadcast() on whichever table is smaller at the time of each query"
+    ],
+    correct: 1,
+    explanation: "Bucketing pre-partitions and pre-sorts both tables by Hash(customer_id) % num_buckets at write time. When Spark reads two tables bucketed with the same key and same bucket count, it knows bucket 0 from table A only needs to match bucket 0 from table B. No shuffle, no sort at query time. The cost is paid once at write time instead of 15 times at read time. Caching (option A) helps with recomputation but still requires the initial shuffle."
+  },
+  {
+    question: "You had an explicit F.broadcast() hint on a 5K-row table joined after several shuffle stages. A teammate removed it during refactoring, saying 'AQE will detect it automatically.' The job went from 17 minutes to a 90-minute timeout. Why didn't AQE pick up the broadcast?",
+    options: [
+      "AQE doesn't support Broadcast Hash Join at all",
+      "AQE relies on runtime statistics that can degrade after multiple prior shuffle stages, making it unable to accurately estimate the table size and choose broadcast",
+      "The 5K-row table was above the autoBroadcastJoinThreshold",
+      "AQE only works on the first join in a query plan, not subsequent ones"
+    ],
+    correct: 1,
+    explanation: "AQE collects runtime statistics during shuffles to make better decisions about join strategies, partition coalescing, and skew handling. But after several prior stages with shuffles and transformations, the accumulated statistics can become inaccurate. AQE may overestimate the table size or not have enough information to confidently choose broadcast. An explicit F.broadcast() hint bypasses this uncertainty entirely. When you know a table is small, the hint is cheap insurance."
+  },
+  {
+    question: "When should you NOT use bucketing?",
+    options: [
+      "When the two tables being joined have different schemas",
+      "When the tables frequently change which column they're joined on, or when one table is small enough for a broadcast join",
+      "When the cluster has more than 100 executors",
+      "When using Iceberg or Delta Lake as the storage format"
+    ],
+    correct: 1,
+    explanation: "Bucketing is tied to a specific key. If you bucket by order_id but next month's pipeline joins by customer_id, the bucketing provides no benefit for that join. Similarly, if one table is 5,000 rows, broadcast join is simpler, faster, and doesn't require any write-time overhead. Bucketing is best for stable Gold-layer tables that are repeatedly joined on the same key by many queries."
+  },
+  {
+    question: "In a Sort-Merge Join, both tables go through Hash(key) % num_partitions. If one join key (e.g., country_code = 'ES') represents 70% of the data, what is the consequence?",
+    options: [
+      "Spark automatically splits that key across multiple partitions to balance the load",
+      "70% of both tables' data lands on a single partition on one executor, while the other executors sit mostly idle, creating a bottleneck called Data Skew",
+      "The join fails with a HashCollisionError because too many rows map to the same partition",
+      "Spark detects the imbalance and switches to Broadcast Hash Join for that key only"
+    ],
+    correct: 1,
+    explanation: "Hash(key) % num_partitions is deterministic: every row with key 'ES' goes to the same partition number. If 70% of rows have that key, 70% of the data concentrates on one executor. The other executors finish quickly and wait. This is Data Skew, covered in depth in Pill 5. Without explicit intervention (salting, AQE skew handling), Spark does not split hot keys automatically during a standard Sort-Merge Join."
+  }
+];
+---
+
+<BaseLayout
+  title="Quiz: Join Strategies & Bucketing | Spark Pill 4"
+  description="Test your understanding of Broadcast Hash Join, Sort-Merge Join, bucketing, and when each strategy is the right choice."
+>
+  <section class="pill-quiz-page">
+    <div class="container">
+      <a href="/blog/spark-pill-4-join-strategies" class="back-link">← Back to Pill 4</a>
+
+      <div class="pill-header">
+        <div class="badge badge-purple" style="margin-bottom: 0.5rem;">Pill 4 · Join Strategies & Bucketing</div>
+        <h1>Quiz: Do You Know Which Join Strategy Spark Should Use?</h1>
+        <p class="pill-lead">
+          These questions test whether you can reason about join strategy selection,
+          OOM risks, and when optimizations like bucketing actually pay off.
+        </p>
+      </div>
+
+      <Quiz
+        title="Pill 4: Broadcast, Sort-Merge, and Bucketing"
+        questions={questions}
+      />
+
+      <div class="pill-footer glass-card">
+        <h3>How did it go?</h3>
+        <p>
+          If you scored below 70%, re-read <strong>Pill 4</strong> — but this time,
+          draw the data flow for each join strategy on paper. Trace where data moves
+          and where it stays local. That is the key to understanding the cost differences.
+        </p>
+        <div class="pill-footer-links">
+          <a href="/blog/spark-pill-4-join-strategies" class="btn btn-secondary btn-sm">Re-read Pill 4</a>
+          <a href="/pills/quiz-pill-5" class="btn btn-primary btn-sm">Next: Pill 5 Quiz — Data Skew</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .pill-quiz-page {
+    padding: 3.5rem 0 5rem;
+  }
+
+  .back-link {
+    display: inline-block;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.8rem;
+    transition: color 0.2s ease;
+  }
+  .back-link:hover {
+    color: var(--accent-indigo);
+  }
+
+  .pill-header {
+    max-width: 720px;
+    margin-bottom: 2rem;
+  }
+
+  .pill-header h1 {
+    font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+    margin-bottom: 0.8rem;
+    line-height: 1.3;
+  }
+
+  .pill-lead {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+    max-width: 640px;
+  }
+
+  .pill-footer {
+    margin-top: 2.5rem;
+    padding: 2rem;
+    background: var(--bg-card);
+  }
+
+  .pill-footer h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-main);
+  }
+
+  .pill-footer p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.7;
+    margin-bottom: 1.1rem;
+    max-width: 600px;
+  }
+
+  .pill-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+</style>

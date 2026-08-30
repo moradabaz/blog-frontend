@@ -1,0 +1,185 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Quiz from '../../components/Quiz.astro';
+
+const questions = [
+  {
+    question: "You open the Spark UI and see that a job has 3 stages. What does that tell you about the number of shuffles in the execution plan?",
+    options: [
+      "There are 3 shuffles, one per stage",
+      "There are 2 shuffles, because each shuffle creates a new stage boundary",
+      "There are 0 shuffles; stages are created by the number of actions in your code",
+      "You cannot determine the number of shuffles from the stage count"
+    ],
+    correct: 1,
+    explanation: "Each shuffle (Exchange node) creates a boundary between two stages. If you have 3 stages, there are 2 boundaries between them, which means 2 shuffles. Stage 0 runs before the first shuffle, Stage 1 runs between the two shuffles, and Stage 2 runs after the second shuffle."
+  },
+  {
+    question: "In a stage's task summary, you see: P75 duration = 4 seconds, Max duration = 7 minutes. What is the most likely problem?",
+    options: [
+      "General volume: the dataset is too large for the cluster",
+      "Data skew: one partition has far more data than the others, causing one task to take much longer",
+      "The Driver is spending too long planning the query",
+      "Network bandwidth is the bottleneck during the shuffle"
+    ],
+    correct: 1,
+    explanation: "When the Max task duration is roughly 100x the P75, it means one (or a few) tasks received vastly more data than the rest. This is textbook data skew. Most tasks finish in about 4 seconds, but one partition has so much data that its task takes 7 minutes. The other executors sit idle waiting for that one task to finish. If it were a volume problem, all tasks would show similar high durations."
+  },
+  {
+    question: "A job's timeline in the Spark UI shows 25 minutes with zero executor activity, followed by 8 minutes of actual execution. What is the likely cause?",
+    options: [
+      "The executors were waiting for data to be read from S3, which was slow",
+      "Data skew caused all tasks to queue behind one slow partition",
+      "The Driver was spending time in Catalyst optimization, planning a complex query before sending tasks to the executors",
+      "The cluster was waiting for executor containers to be allocated by YARN"
+    ],
+    correct: 2,
+    explanation: "When the timeline shows a long gap with no executor activity at all (not even slow tasks), the Driver is the bottleneck. It is running the Catalyst optimizer on a complex query plan with many transformations. The Driver is a single process: it must finish planning before it can send any tasks. This is the lineage problem. Inserting checkpoint() at strategic points breaks the plan into smaller pieces that Catalyst can optimize quickly."
+  },
+  {
+    question: "You see a scan stage with 1,780 tasks for a table that has 91 Parquet files. Each task processes only a few hundred rows. What is the most likely cause and fix?",
+    options: [
+      "Spark always creates one task per row group in Parquet files, and the fix is to increase the row group size",
+      "The shuffle.partitions setting is too high; lowering it to 91 will fix it",
+      "A filter using isin() with a large list is preventing partition pruning, causing Spark to open every file. Converting the list to a DataFrame and using a broadcast join would fix it",
+      "The table has too many small files; running compaction will reduce the task count"
+    ],
+    correct: 2,
+    explanation: "When isin() receives a large list of values, it can prevent Spark from pushing the filter down to the Parquet reader for partition pruning. Spark ends up scanning every row group in every file, creating many tiny tasks. The scheduling overhead per task (serialize, send, deserialize, report) dominates the actual processing. Converting the ID list to a small DataFrame and using a broadcast join lets Spark push the filter properly and read only the relevant files."
+  },
+  {
+    question: "A stage shows 5.2 GB of Spill (Disk) and 340 seconds of GC Time for one task, while other tasks in the same stage show 0 spill and 2 seconds of GC. What do these metrics tell you?",
+    options: [
+      "The executor running that task has a faulty disk, causing slow writes",
+      "That task received a skewed partition. The data did not fit in memory, so Spark spilled to disk, and the JVM spent excessive time on garbage collection because objects were being created faster than they could be reclaimed",
+      "The shuffle was too large for the network, so Spark cached data on disk as a fallback",
+      "GC time is independent of spill. The high GC is caused by the Driver collecting results, not by the executor"
+    ],
+    correct: 1,
+    explanation: "High Spill (Disk) means the task's data did not fit in the executor's execution memory, so Spark serialized and wrote the excess to local disk. High GC time means the JVM was constantly trying to free memory to make room for new objects. Both symptoms together point to one task handling far more data than the others: a skewed partition. The fix is to address the skew (salting, pre-filtering) rather than adding memory, since 15 of 16 cores are already idle."
+  },
+  {
+    question: "Your daily Spark job is slow. P75 and Max task durations are nearly identical (both around 120 seconds), and all tasks show similar shuffle read volumes. Adding 4 more nodes to the cluster would likely:",
+    options: [
+      "Have no effect, because the problem is data skew",
+      "Have no effect, because the Driver is the bottleneck",
+      "Help, because the work is evenly distributed and more cores means each core processes fewer partitions, reducing overall wall-clock time",
+      "Make it worse, because more nodes means more shuffle traffic across the network"
+    ],
+    correct: 2,
+    explanation: "When P75 and Max are nearly identical, the work is evenly distributed. There is no skew (one task doing all the work) and no planning bottleneck (Driver idle time). Every core is doing roughly equal work. Adding more cores means the same number of partitions gets spread across more workers, so each worker processes fewer partitions. This is the one scenario where horizontal scaling directly helps."
+  },
+  {
+    question: "Your team suggests adding 10 more executor nodes to fix a job where the Spark UI shows the Driver spending 20 minutes in planning before any task executes. Will this help?",
+    options: [
+      "Yes, more executors means the Driver can parallelize the planning across them",
+      "Yes, but only if the executors have more RAM than the current ones",
+      "No. The Driver is a single process on one machine. Planning happens entirely in the Driver. More executors do not speed up planning. The fix is to reduce the plan complexity with checkpoint()",
+      "No, because the problem is insufficient network bandwidth, not compute"
+    ],
+    correct: 2,
+    explanation: "The Driver runs Catalyst optimization as a single-threaded process. It does not delegate planning to executors. The executors sit idle until the Driver finishes producing the physical plan and sends out tasks. Adding more executors just means more idle machines during those 20 minutes. The fix is checkpoint(), which breaks the query plan into smaller independent plans that the Driver can optimize quickly."
+  }
+];
+---
+
+<BaseLayout
+  title="Quiz: Spark UI | Spark Pill 7"
+  description="Test your understanding of the Spark UI hierarchy, task metrics, and how to diagnose skew, volume, and planning problems from the UI."
+>
+  <section class="pill-quiz-page">
+    <div class="container">
+      <a href="/blog/spark-pill-7-spark-ui" class="back-link">← Back to Pill 7</a>
+
+      <div class="pill-header">
+        <div class="badge badge-purple" style="margin-bottom: 0.5rem;">Pill 7 · Spark UI</div>
+        <h1>Quiz: Can You Read the Spark UI?</h1>
+        <p class="pill-lead">
+          These questions test whether you can look at Spark UI metrics and identify
+          the real bottleneck. Not memorization of metric names, but the reasoning
+          to diagnose production problems.
+        </p>
+      </div>
+
+      <Quiz
+        title="Pill 7: Reading the Spark UI"
+        questions={questions}
+      />
+
+      <div class="pill-footer glass-card">
+        <h3>How did it go?</h3>
+        <p>
+          If you scored below 70%, re-read <strong>Pill 7</strong> and pay special
+          attention to the P75 vs Max trick and the three practical examples.
+          Try to explain each scenario out loud: what the metrics show, why it
+          happens, and what the fix is.
+        </p>
+        <div class="pill-footer-links">
+          <a href="/blog/spark-pill-7-spark-ui" class="btn btn-secondary btn-sm">Re-read Pill 7</a>
+          <a href="/pills/quiz-pill-8" class="btn btn-primary btn-sm">Next: Pill 8 Quiz — Iceberg Pitfalls</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .pill-quiz-page {
+    padding: 3.5rem 0 5rem;
+  }
+
+  .back-link {
+    display: inline-block;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.8rem;
+    transition: color 0.2s ease;
+  }
+  .back-link:hover {
+    color: var(--accent-indigo);
+  }
+
+  .pill-header {
+    max-width: 720px;
+    margin-bottom: 2rem;
+  }
+
+  .pill-header h1 {
+    font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+    margin-bottom: 0.8rem;
+    line-height: 1.3;
+  }
+
+  .pill-lead {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+    max-width: 640px;
+  }
+
+  .pill-footer {
+    margin-top: 2.5rem;
+    padding: 2rem;
+    background: var(--bg-card);
+  }
+
+  .pill-footer h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-main);
+  }
+
+  .pill-footer p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.7;
+    margin-bottom: 1.1rem;
+    max-width: 600px;
+  }
+
+  .pill-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+</style>

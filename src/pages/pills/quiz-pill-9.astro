@@ -1,0 +1,191 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Quiz from '../../components/Quiz.astro';
+
+const questions = [
+  {
+    question: "You need to count login attempts per user in a rolling 5-minute window, processing 10,000 events per second. A colleague suggests using AWS Lambda with DynamoDB for state. What is the main problem with this approach?",
+    options: [
+      "Lambda cannot process 10,000 events per second; it has a hard concurrency limit",
+      "Each Lambda invocation must read and write the current count from DynamoDB, resulting in 10,000 reads and 10,000 writes per second to the database. The external state store becomes the bottleneck and the cost scales linearly with throughput",
+      "DynamoDB does not support incrementing counters atomically",
+      "Lambda functions have a 15-minute maximum execution time, which is shorter than the 5-minute window"
+    ],
+    correct: 1,
+    explanation: "Lambda is stateless: each invocation starts fresh with no memory of previous events. To maintain the rolling count, every invocation must query DynamoDB for the current count, increment it, and write it back. At 10,000 events/second, that is 20,000 database operations per second. DynamoDB can handle it with enough provisioned capacity, but the cost scales linearly and the latency of each event now includes two network round-trips. Flink, by contrast, would keep the counter in local RocksDB (microsecond access) and only write to the destination when the window closes."
+  },
+  {
+    question: "In Apache Flink, what role does RocksDB play in stateful stream processing?",
+    options: [
+      "It is a distributed database that stores the final output of stream computations",
+      "It is an embedded key-value store that runs inside the Flink process, maintaining local state (counters, window contents, aggregations) with microsecond-level access, avoiding network round-trips to external databases",
+      "It is a message queue that buffers events between Flink operators",
+      "It is a checkpointing service that writes snapshots to S3 for fault tolerance"
+    ],
+    correct: 1,
+    explanation: "RocksDB is an embedded key-value store that runs inside the same JVM process as the Flink operator. When processing windowed aggregations, Flink reads and writes state to local RocksDB instead of going across the network to an external database. This is the fundamental advantage over Lambda + DynamoDB: local state access takes microseconds, not milliseconds. RocksDB state is also periodically checkpointed to durable storage (like S3) for fault tolerance, but the primary access path is local."
+  },
+  {
+    question: "You are building a monitoring dashboard that shows average response time per service over the last hour, updated every 15 minutes. Which window type is the best fit?",
+    options: [
+      "Tumbling window of 1 hour: simple, non-overlapping blocks",
+      "Hopping (sliding) window of 1 hour with a 15-minute slide: each update covers the full last hour, smoothing out edge effects",
+      "Session window with a 15-minute inactivity gap",
+      "Global window with a trigger every 15 minutes"
+    ],
+    correct: 1,
+    explanation: "A hopping window of 1 hour that slides every 15 minutes produces a new result every 15 minutes, each covering the full preceding hour. This smooths out the edge effects you would get with a tumbling window, where a spike straddling the window boundary gets split between two counts. Session windows are designed for user activity patterns (variable length), and a global window with a trigger would accumulate indefinitely rather than looking at a rolling hour."
+  },
+  {
+    question: "An event with event_time = 14:00:00 arrives at your Flink application at 14:00:45. The watermark is currently at 14:00:30 with an allowed lateness of 20 seconds. What happens to this event?",
+    options: [
+      "The event is processed normally because it arrived within 45 seconds",
+      "The event is dropped because its event_time (14:00:00) is before the watermark (14:00:30) by more than the allowed lateness (20 seconds). It is considered too late",
+      "The event is buffered until the next window opens",
+      "The event triggers a recomputation of all windows since 14:00:00"
+    ],
+    correct: 1,
+    explanation: "The watermark at 14:00:30 means Flink believes all events up to 14:00:30 have arrived. The allowed lateness extends the acceptance window by 20 seconds, so events as late as 14:00:10 (watermark minus allowed lateness: 14:00:30 - 20s = 14:00:10) would still be accepted. An event at 14:00:00 is 30 seconds behind the watermark, which exceeds the 20-second allowed lateness. It is dropped as too late."
+  },
+  {
+    question: "A team uses Kinesis with Lambda to ingest clickstream events into S3 as Parquet files (data lake pattern). They now want to add real-time sessionization: grouping clicks into user sessions with a 30-minute inactivity timeout. Should they extend the Lambda approach?",
+    options: [
+      "Yes, Lambda can handle session windows by storing session state in ElastiCache with a 30-minute TTL",
+      "No. Sessionization is a stateful operation requiring variable-length windows per user. Lambda would need an external state store for every user's last-seen timestamp, and at scale, the database becomes the bottleneck. Flink or Kafka Streams with local state is the right tool for this",
+      "Yes, they can use Lambda's provisioned concurrency to keep sessions in memory",
+      "No, because Lambda cannot read from Kinesis; they need to switch to SQS first"
+    ],
+    correct: 1,
+    explanation: "Session windows are inherently stateful: you must track each user's last event timestamp to detect the inactivity gap. With Lambda, every event requires checking and updating that user's state in an external store. At high throughput, this means millions of database operations per minute. Flink maintains per-user session state in local RocksDB, processes events with microsecond state access, and only writes results when a session closes. The Lambda + S3 pattern remains excellent for the batch ingestion part of the pipeline."
+  },
+  {
+    question: "Your company processes 500 events per second and needs aggregations with latency under 10 seconds. The team already runs Spark. Which approach is the best fit?",
+    options: [
+      "AWS Lambda with DynamoDB, because the throughput is low enough for serverless",
+      "Apache Flink, because only Flink can handle stateful processing",
+      "Spark Structured Streaming with micro-batches. At 500 events/second, the throughput is modest, second-level latency is acceptable, and the team already has Spark expertise. Adopting Flink adds operational complexity for a workload Spark can handle",
+      "A custom solution with Kafka consumers writing directly to the database"
+    ],
+    correct: 2,
+    explanation: "Spark Structured Streaming processes data in micro-batches (every few seconds), maintains state between batches, and supports windowed aggregations. At 500 events/second with 10-second latency tolerance, this is well within Spark's capabilities. The team already runs Spark, so they avoid the operational cost of deploying and maintaining a separate Flink cluster. Flink would be the right choice at higher throughput or if millisecond latency were required."
+  },
+  {
+    question: "Martin Kleppmann wrote that 'windows don't exist in the data; they are an abstraction over state.' What does this mean for system design?",
+    options: [
+      "Windows are a limitation of streaming frameworks that should be avoided whenever possible",
+      "Windows are an implementation detail handled automatically by the framework; developers do not need to think about them",
+      "The choice of window type (tumbling, hopping, session, global) is a design decision that determines how you interpret a continuous stream. Different window types give different answers from the same data, and the right choice depends on what question you are asking",
+      "Windows only apply to batch processing; streaming processes events one at a time without windows"
+    ],
+    correct: 2,
+    explanation: "A continuous stream of events has no inherent boundaries. When you impose a 1-hour tumbling window, a 1-hour hopping window, or a session window on the same data, you get different aggregation results. The window type determines what 'counts' as the same group of events. This is a modeling decision, not a technical one. Choosing the wrong window type means your metrics answer the wrong question, regardless of how correctly your code runs."
+  }
+];
+---
+
+<BaseLayout
+  title="Quiz: Streaming & State | Spark Pill 9"
+  description="Test your understanding of stateful stream processing, window types, late event handling, and when to choose Lambda, Flink, or Spark Structured Streaming."
+>
+  <section class="pill-quiz-page">
+    <div class="container">
+      <a href="/blog/spark-pill-9-streaming-and-state" class="back-link">← Back to Pill 9</a>
+
+      <div class="pill-header">
+        <div class="badge badge-purple" style="margin-bottom: 0.5rem;">Pill 9 · Streaming & State</div>
+        <h1>Quiz: Do You Understand the State Problem?</h1>
+        <p class="pill-lead">
+          These questions test whether you can reason about stateful vs stateless
+          processing, choose the right window type for a use case, and decide when
+          Lambda, Flink, or Spark Structured Streaming is the right tool.
+        </p>
+      </div>
+
+      <Quiz
+        title="Pill 9: Streaming, State, and Architecture"
+        questions={questions}
+      />
+
+      <div class="pill-footer glass-card">
+        <h3>Series complete!</h3>
+        <p>
+          You have reached the end of the Spark Pills series. If you worked through
+          all 10 pills and their quizzes, you now have a solid mental model of how
+          Spark works under the hood: from distributed computing fundamentals to
+          production debugging, Iceberg operations, and streaming architecture.
+        </p>
+        <p>
+          The goal was never to memorize syntax. It was to build the reasoning that
+          lets you diagnose problems, make architecture decisions, and understand
+          why things break. Keep that reasoning sharp by applying it to your own
+          production systems.
+        </p>
+        <div class="pill-footer-links">
+          <a href="/blog/spark-pill-9-streaming-and-state" class="btn btn-secondary btn-sm">Re-read Pill 9</a>
+          <a href="/blog/spark-pill-0-why-not-pandas" class="btn btn-primary btn-sm">Back to Pill 0: Where It All Started</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .pill-quiz-page {
+    padding: 3.5rem 0 5rem;
+  }
+
+  .back-link {
+    display: inline-block;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.8rem;
+    transition: color 0.2s ease;
+  }
+  .back-link:hover {
+    color: var(--accent-indigo);
+  }
+
+  .pill-header {
+    max-width: 720px;
+    margin-bottom: 2rem;
+  }
+
+  .pill-header h1 {
+    font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+    margin-bottom: 0.8rem;
+    line-height: 1.3;
+  }
+
+  .pill-lead {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+    max-width: 640px;
+  }
+
+  .pill-footer {
+    margin-top: 2.5rem;
+    padding: 2rem;
+    background: var(--bg-card);
+  }
+
+  .pill-footer h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-main);
+  }
+
+  .pill-footer p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.7;
+    margin-bottom: 1.1rem;
+    max-width: 600px;
+  }
+
+  .pill-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+</style>
