@@ -1,172 +1,516 @@
 ---
-import BaseLayout from '../../layouts/BaseLayout.astro';
-import Quiz from '../../components/Quiz.astro';
+/**
+ * Quiz.astro — Componente interactivo de quiz para las pills de Spark.
+ * Vanilla JS, sin dependencias externas.
+ *
+ * Uso:
+ *   import Quiz from '../components/Quiz.astro';
+ *   <Quiz title="Quiz: MapReduce" questions={[
+ *     { question: "...", options: ["A","B","C","D"], correct: 2, explanation: "..." }
+ *   ]} />
+ */
 
-const questions = [
-  {
-    question: "In a classic MapReduce job, which phase is responsible for moving data between nodes so that all equal keys end up at the same reducer?",
-    options: [
-      " - The Map phase, which sends keys directly to the correct reducer",
-      " - The Shuffle phase, which repartitions and transfers data across the network",
-      " - The Reduce phase, which requests data from each mapper",
-      " - The Driver, which orchestrates the transfer between nodes"
-    ],
-    correct: 1,
-    explanation: "The Shuffle is the intermediate phase between Map and Reduce. This is where the real network I/O happens: data is partitioned by key (usually with a hash), sorted, and transferred across the network so that each reducer receives ALL the rows for its assigned keys. It is the most expensive phase of MapReduce."
-  },
-  {
-    question: "Why can't a mapper 'decide' which reducer receives each record?",
-    options: [
-      " - Because the mapper doesn't know the hash function that will be used",
-      " - Because the mapper only applies a row-by-row transformation. The assignment to a reducer is decided by the partitioner during the shuffle",
-      " - Because the driver centralizes all routing decisions",
-      " - Because mappers execute after the reducers"
-    ],
-    correct: 1,
-    explanation: "The mapper is a pure function: it receives a row and emits zero or more (key, value) pairs. It doesn't know how many reducers exist or who will receive its output. It is the partitioner (part of the shuffle) that applies hash(key) % num_partitions to decide which reducer gets each record."
-  },
-  {
-    question: "In Spark, what is the direct equivalent of MapReduce's Map phase?",
-    options: [
-      " - A wide transformation like groupByKey()",
-      " - A narrow transformation like map() or filter()",
-      " - The collect() method that brings data to the driver",
-      " - The persist() operation that caches data"
-    ],
-    correct: 1,
-    explanation: "Narrow transformations (map, filter, flatMap) process each partition independently, without needing to move data between nodes. This is exactly what a mapper does: it operates row by row within its data split. Wide transformations (groupBy, reduceByKey, join) are the ones that trigger a shuffle."
-  },
-  {
-    question: "If you have 1TB of data and 100 mappers, how much data does each mapper read?",
-    options: [
-      " - 1TB. Each mapper needs to see all the data",
-      " - ~10GB. Each mapper reads its split (1TB / 100)",
-      " - It depends on the key. Mappers with popular keys read more",
-      " - 0GB. Mappers don't read data, they only transform it in memory"
-    ],
-    correct: 1,
-    explanation: "The input data is divided into splits (blocks) and each mapper receives one split. With 1TB and 100 mappers, each one reads ~10GB. Mappers know nothing about other mappers' keys. They process their portion of data completely independently and in parallel."
-  },
-  {
-    question: "What happens if one key concentrates 80% of the data in a job with reduceByKey()?",
-    options: [
-      " - Spark detects the skew and automatically redistributes",
-      " - All 100 reducers process that 80% in parallel",
-      " - A single reducer receives 80% of the data, becomes a bottleneck, and can cause OOM or spill to disk",
-      " - The driver rejects the job because it detects the uneven distribution"
-    ],
-    correct: 2,
-    explanation: "The hash function is deterministic: same key → same partition → same reducer. If one key dominates the data, that reducer receives a disproportionate load while the others finish quickly and wait. This is data skew: it causes spill to disk, GC storms, and in extreme cases OOM. Spark does not correct it automatically (except AQE with skew join hints in recent versions)."
-  },
-  {
-    question: "Why did Spark introduce the DAG model instead of chaining MapReduce jobs like Hadoop did?",
-    options: [
-      " - Because the DAG allows more mappers to run in parallel",
-      " - Because the DAG allows chaining transformations without writing intermediate results to disk between each Map-Reduce phase",
-      " - Because the DAG eliminates the need for shuffle between nodes",
-      " - Because the DAG allows using GPUs in addition to CPUs"
-    ],
-    correct: 1,
-    explanation: "In Hadoop, each Map-Reduce step is an independent job: the reducer's output is written to HDFS (disk) and the next job reads it again. Chaining 5 steps = 5 disk write/read cycles. Spark's DAG allows planning the entire chain and passing intermediate data in memory between stages, writing to disk only when a shuffle is required."
-  }
-];
+interface Question {
+  question: string;
+  options: string[];
+  correct: number;
+  explanation: string;
+}
+
+interface Props {
+  title?: string;
+  questions: Question[];
+}
+
+const { title = "Quiz", questions } = Astro.props;
+const quizId = `quiz-${Math.random().toString(36).slice(2, 9)}`;
 ---
 
-<BaseLayout
-  title="Quiz: MapReduce & Spark Fundamentals | Morad Abaz"
-  description="Test your understanding of how MapReduce works under the hood: the Map, Shuffle and Reduce phases, what happens physically on each node, and why Spark evolved to the DAG model."
->
-  <section class="pill-quiz-page">
-    <div class="container">
-      <a href="/pills" class="back-link">← Back to Pills</a>
-
-      <div class="pill-header">
-        <div class="badge badge-purple" style="margin-bottom: 0.5rem;">Pill 1 · MapReduce</div>
-        <h1>Quiz: MapReduce & Distributed Computing</h1>
-        <p class="pill-lead">
-          Check whether you have internalized how MapReduce works under the hood:
-          the Map, Shuffle and Reduce phases, what happens physically on each node,
-          and why Spark evolved to the DAG model.
-        </p>
-      </div>
-
-      <Quiz
-        title="MapReduce Fundamentals"
-        questions={questions}
-      />
-
-      <div class="pill-footer glass-card">
-        <h3>Want to go deeper?</h3>
-        <p>
-          This quiz covers the concepts from <strong>Pill 1: MapReduce, The Mental Model</strong>.
-          If you missed any question, review the pill to solidify the concepts.
-        </p>
-        <div class="pill-footer-links">
-          <a href="/blog/spark-performance-tuning" class="btn btn-secondary btn-sm">Read: Spark Performance Tuning</a>
-          <a href="https://medium.com/@moradabaz" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">My articles on Medium</a>
-        </div>
+<div class="quiz-wrapper" id={quizId} data-questions={JSON.stringify(questions)}>
+  <!-- Header -->
+  <div class="quiz-header">
+    <div class="quiz-badge">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      Quiz
+    </div>
+    <h3 class="quiz-title">{title}</h3>
+    <div class="quiz-progress">
+      <span class="quiz-progress-text">Question <span class="quiz-current">1</span> of {questions.length}</span>
+      <div class="quiz-progress-bar">
+        <div class="quiz-progress-fill" style="width: 0%"></div>
       </div>
     </div>
-  </section>
-</BaseLayout>
+  </div>
+
+  <!-- Question area -->
+  <div class="quiz-body">
+    <p class="quiz-question"></p>
+    <div class="quiz-options"></div>
+    <div class="quiz-feedback" hidden>
+      <div class="quiz-feedback-icon"></div>
+      <p class="quiz-feedback-text"></p>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="quiz-footer">
+    <button class="quiz-btn quiz-btn-next" hidden>
+      Next
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="5" y1="12" x2="19" y2="12"/>
+        <polyline points="12 5 19 12 12 19"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Results (hidden until end) -->
+  <div class="quiz-results" hidden>
+    <div class="quiz-results-icon"></div>
+    <h3 class="quiz-results-title"></h3>
+    <p class="quiz-results-score"></p>
+    <div class="quiz-results-breakdown"></div>
+    <button class="quiz-btn quiz-btn-retry">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 4 23 10 17 10"/>
+        <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
+      </svg>
+      Retry quiz
+    </button>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('.quiz-wrapper').forEach(wrapper => {
+    const questions: { question: string; options: string[]; correct: number; explanation: string }[] =
+      JSON.parse(wrapper.getAttribute('data-questions') || '[]');
+
+    let current = 0;
+    let score = 0;
+    let answered = false;
+    const answers: (boolean)[] = [];
+
+    // DOM refs
+    const body = wrapper.querySelector('.quiz-body') as HTMLElement;
+    const questionEl = wrapper.querySelector('.quiz-question') as HTMLElement;
+    const optionsEl = wrapper.querySelector('.quiz-options') as HTMLElement;
+    const feedbackEl = wrapper.querySelector('.quiz-feedback') as HTMLElement;
+    const feedbackIcon = wrapper.querySelector('.quiz-feedback-icon') as HTMLElement;
+    const feedbackText = wrapper.querySelector('.quiz-feedback-text') as HTMLElement;
+    const nextBtn = wrapper.querySelector('.quiz-btn-next') as HTMLButtonElement;
+    const progressText = wrapper.querySelector('.quiz-current') as HTMLElement;
+    const progressFill = wrapper.querySelector('.quiz-progress-fill') as HTMLElement;
+    const resultsEl = wrapper.querySelector('.quiz-results') as HTMLElement;
+    const resultsIcon = wrapper.querySelector('.quiz-results-icon') as HTMLElement;
+    const resultsTitle = wrapper.querySelector('.quiz-results-title') as HTMLElement;
+    const resultsScore = wrapper.querySelector('.quiz-results-score') as HTMLElement;
+    const resultsBreakdown = wrapper.querySelector('.quiz-results-breakdown') as HTMLElement;
+    const retryBtn = wrapper.querySelector('.quiz-btn-retry') as HTMLButtonElement;
+    const footer = wrapper.querySelector('.quiz-footer') as HTMLElement;
+
+    function render() {
+      const q = questions[current];
+      answered = false;
+
+      // Update progress
+      progressText.textContent = String(current + 1);
+      progressFill.style.width = `${((current) / questions.length) * 100}%`;
+
+      // Question
+      questionEl.textContent = q.question;
+
+      // Options
+      optionsEl.innerHTML = '';
+      q.options.forEach((opt, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'quiz-option';
+        btn.innerHTML = `<span class="quiz-option-letter">${String.fromCharCode(65 + i)}</span><span class="quiz-option-text">${opt}</span>`;
+        btn.addEventListener('click', () => selectOption(i));
+        optionsEl.appendChild(btn);
+      });
+
+      // Hide feedback & next
+      feedbackEl.hidden = true;
+      nextBtn.hidden = true;
+      body.hidden = false;
+      footer.hidden = false;
+      resultsEl.hidden = true;
+    }
+
+    function selectOption(index: number) {
+      if (answered) return;
+      answered = true;
+
+      const q = questions[current];
+      const isCorrect = index === q.correct;
+      if (isCorrect) score++;
+      answers.push(isCorrect);
+
+      // Style options
+      const buttons = optionsEl.querySelectorAll('.quiz-option');
+      buttons.forEach((btn, i) => {
+        const el = btn as HTMLElement;
+        el.style.pointerEvents = 'none';
+        if (i === q.correct) {
+          el.classList.add('correct');
+        } else if (i === index && !isCorrect) {
+          el.classList.add('incorrect');
+        } else {
+          el.classList.add('dimmed');
+        }
+      });
+
+      // Feedback
+      feedbackEl.hidden = false;
+      feedbackEl.className = `quiz-feedback ${isCorrect ? 'feedback-correct' : 'feedback-incorrect'}`;
+      feedbackIcon.textContent = isCorrect ? '✓' : '✗';
+      feedbackText.textContent = q.explanation;
+
+      // Show next or finish
+      nextBtn.hidden = false;
+      nextBtn.textContent = current < questions.length - 1 ? '' : '';
+      nextBtn.innerHTML = current < questions.length - 1
+        ? 'Next <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>'
+        : 'See results';
+    }
+
+    function showResults() {
+      body.hidden = true;
+      footer.hidden = true;
+      resultsEl.hidden = false;
+      progressFill.style.width = '100%';
+
+      const pct = Math.round((score / questions.length) * 100);
+      let emoji = '';
+      let msg = '';
+
+      if (pct === 100) { emoji = '🏆'; msg = 'Perfect! You nailed this topic.'; }
+      else if (pct >= 70) { emoji = '💪'; msg = 'Nice work! You have a solid foundation.'; }
+      else if (pct >= 40) { emoji = '📖'; msg = 'Getting there. Re-read the pill to solidify the concepts.'; }
+      else { emoji = '🔄'; msg = 'Worth going through this pill again carefully.'; }
+
+      resultsIcon.textContent = emoji;
+      resultsTitle.textContent = msg;
+      resultsScore.innerHTML = `<strong>${score}</strong> de <strong>${questions.length}</strong> correctas (${pct}%)`;
+
+      // Breakdown
+      resultsBreakdown.innerHTML = '';
+      questions.forEach((q, i) => {
+        const row = document.createElement('div');
+        row.className = `quiz-breakdown-row ${answers[i] ? 'row-correct' : 'row-incorrect'}`;
+        row.innerHTML = `<span class="breakdown-icon">${answers[i] ? '✓' : '✗'}</span><span class="breakdown-text">${q.question}</span>`;
+        resultsBreakdown.appendChild(row);
+      });
+    }
+
+    nextBtn.addEventListener('click', () => {
+      if (current < questions.length - 1) {
+        current++;
+        render();
+      } else {
+        showResults();
+      }
+    });
+
+    retryBtn.addEventListener('click', () => {
+      current = 0;
+      score = 0;
+      answers.length = 0;
+      render();
+    });
+
+    // Init
+    render();
+  });
+</script>
 
 <style>
-  .pill-quiz-page {
-    padding: 3.5rem 0 5rem;
-  }
-
-  .back-link {
-    display: inline-block;
-    color: var(--text-muted);
-    font-size: 0.9rem;
-    margin-bottom: 1.8rem;
-    transition: color 0.2s ease;
-  }
-  .back-link:hover {
-    color: var(--accent-indigo);
-  }
-
-  .pill-header {
-    max-width: 720px;
-    margin-bottom: 2rem;
-  }
-
-  .pill-header h1 {
-    font-size: clamp(1.6rem, 3.5vw, 2.2rem);
-    margin-bottom: 0.8rem;
-    line-height: 1.3;
-  }
-
-  .pill-lead {
-    font-size: 1.05rem;
-    color: var(--text-muted);
-    line-height: 1.7;
-    max-width: 640px;
-  }
-
-  .pill-footer {
-    margin-top: 2.5rem;
-    padding: 2rem;
+  .quiz-wrapper {
     background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    margin: 2rem 0;
   }
 
-  .pill-footer h3 {
-    font-size: 1.2rem;
-    margin-bottom: 0.5rem;
+  /* Header */
+  .quiz-header {
+    padding: 1.5rem 1.75rem 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-subtle);
+  }
+
+  .quiz-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.65rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.78rem;
+    font-weight: 500;
+    background: #e0e7ff;
+    color: #4338ca;
+    margin-bottom: 0.6rem;
+  }
+
+  .quiz-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: 0.85rem;
+  }
+
+  .quiz-progress-text {
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    display: block;
+    margin-bottom: 0.4rem;
+  }
+
+  .quiz-progress-bar {
+    height: 4px;
+    background: var(--border-color);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .quiz-progress-fill {
+    height: 100%;
+    background: var(--accent-indigo);
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+
+  /* Body */
+  .quiz-body {
+    padding: 1.75rem;
+  }
+
+  .quiz-question {
+    font-size: 1.08rem;
+    font-weight: 500;
+    color: var(--text-main);
+    line-height: 1.6;
+    margin-bottom: 1.25rem;
+  }
+
+  /* Options (dynamic elements: need :global) */
+  .quiz-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+
+  .quiz-wrapper :global(.quiz-option) {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    background: var(--bg-card);
+    border: 1.5px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    text-align: left;
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    color: var(--text-main);
+    transition: all 0.15s ease;
+    line-height: 1.5;
+    width: 100%;
+  }
+
+  .quiz-wrapper :global(.quiz-option:hover) {
+    border-color: var(--accent-indigo);
+    background: #f5f3ff;
+  }
+
+  .quiz-wrapper :global(.quiz-option-letter) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    background: var(--bg-subtle);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-dim);
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .quiz-wrapper :global(.quiz-option-text) {
+    flex: 1;
+  }
+
+  .quiz-wrapper :global(.quiz-option.correct) {
+    border-color: #059669;
+    background: #ecfdf5;
+  }
+  .quiz-wrapper :global(.quiz-option.correct .quiz-option-letter) {
+    background: #059669;
+    color: #fff;
+  }
+
+  .quiz-wrapper :global(.quiz-option.incorrect) {
+    border-color: #dc2626;
+    background: #fef2f2;
+  }
+  .quiz-wrapper :global(.quiz-option.incorrect .quiz-option-letter) {
+    background: #dc2626;
+    color: #fff;
+  }
+
+  .quiz-wrapper :global(.quiz-option.dimmed) {
+    opacity: 0.45;
+  }
+
+  /* Feedback */
+  .quiz-feedback {
+    margin-top: 1.1rem;
+    padding: 1rem 1.15rem;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+    line-height: 1.6;
+  }
+
+  .quiz-feedback-icon {
+    font-weight: 700;
+    font-size: 1rem;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .quiz-feedback-text {
+    font-size: 0.92rem;
     color: var(--text-main);
   }
 
-  .pill-footer p {
-    color: var(--text-muted);
-    font-size: 0.95rem;
-    line-height: 1.7;
-    margin-bottom: 1.1rem;
-    max-width: 600px;
+  .quiz-wrapper :global(.feedback-correct) {
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+  }
+  .quiz-wrapper :global(.feedback-correct) .quiz-feedback-icon { color: #059669; }
+
+  .quiz-wrapper :global(.feedback-incorrect) {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+  }
+  .quiz-wrapper :global(.feedback-incorrect) .quiz-feedback-icon { color: #dc2626; }
+
+  /* Footer */
+  .quiz-footer {
+    padding: 0 1.75rem 1.5rem;
+    display: flex;
+    justify-content: flex-end;
   }
 
-  .pill-footer-links {
+  .quiz-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.6rem 1.25rem;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-sans);
+    font-weight: 500;
+    font-size: 0.9rem;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s ease;
+  }
+
+  .quiz-btn-next {
+    background: var(--accent-indigo);
+    color: #fff;
+  }
+  .quiz-btn-next:hover { background: #4338ca; }
+
+  /* Results */
+  .quiz-results {
+    padding: 2.5rem 1.75rem;
+    text-align: center;
+  }
+
+  .quiz-results-icon {
+    font-size: 2.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .quiz-results-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: 0.4rem;
+  }
+
+  .quiz-results-score {
+    font-size: 1rem;
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+  }
+
+  .quiz-results-breakdown {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.65rem;
+    flex-direction: column;
+    gap: 0.4rem;
+    text-align: left;
+    max-width: 560px;
+    margin: 0 auto 1.5rem;
+  }
+
+  .quiz-wrapper :global(.quiz-breakdown-row) {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.55rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.88rem;
+    line-height: 1.5;
+  }
+
+  .quiz-wrapper :global(.breakdown-icon) {
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .quiz-wrapper :global(.breakdown-text) {
+    color: var(--text-main);
+  }
+
+  .quiz-wrapper :global(.row-correct) {
+    background: #f0fdf4;
+  }
+  .quiz-wrapper :global(.row-correct .breakdown-icon) { color: #059669; }
+
+  .quiz-wrapper :global(.row-incorrect) {
+    background: #fef2f2;
+  }
+  .quiz-wrapper :global(.row-incorrect .breakdown-icon) { color: #dc2626; }
+
+  .quiz-btn-retry {
+    background: var(--bg-card);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    margin-top: 0.5rem;
+  }
+  .quiz-btn-retry:hover {
+    background: var(--bg-subtle);
+    border-color: var(--border-color-hover);
+  }
+
+  @media (max-width: 640px) {
+    .quiz-header, .quiz-body, .quiz-footer, .quiz-results {
+      padding-left: 1.15rem;
+      padding-right: 1.15rem;
+    }
   }
 </style>
