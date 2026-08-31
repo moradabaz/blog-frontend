@@ -94,6 +94,8 @@ This transcript is the "before." The rest of the series builds the actual fix, s
 
 ---
 
+> **Test yourself: [Pill 0 Quiz: What Zero Context Actually Breaks](/pills/semantic-layer-quiz-0)**
+>
 > **Next up: [Pill 1: Can Column Descriptions Alone Stop an LLM From Hallucinating SQL?](/blog/semantic-layer-pill-1-column-descriptions)**
 >
 > **Series: Semantic Layer Pills.** Source project: [pms-semantic-layer](https://github.com/moradabaz/pms-semantic-layer) · Full write-ups: [semantic-layer-pills](https://github.com/moradabaz/semantic-layer-pills).

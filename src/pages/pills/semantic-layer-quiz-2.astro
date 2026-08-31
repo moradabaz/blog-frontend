@@ -1,0 +1,190 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Quiz from '../../components/Quiz.astro';
+
+const questions = [
+  {
+    question: "What's the actual reason to use a {% docs %} block instead of writing a description directly inline in the YAML?",
+    options: [
+      "Purely for long text, inline strings can't hold more than a sentence",
+      "Reuse and single-sourcing: if the same explanation applies to more than one column, or other docs should reference it, an inline string forces duplication that will drift out of sync the moment one copy gets updated and the other doesn't",
+      "dbt requires it for any column used in a KPI",
+      "It has no real benefit over inline strings, it's a style preference"
+    ],
+    correct: 1,
+    explanation: "Length isn't the real driver, it's whether the explanation needs to exist in exactly one place. If two columns' meanings both trace back to the same underlying business rule (like a shared proration story), a doc block referenced from both keeps that explanation as one source of truth instead of two copies that can quietly disagree."
+  },
+  {
+    question: "A dbt model has 53 passing tests. Why isn't that enough to guarantee a column's data type stays correct?",
+    options: [
+      "Tests always check types automatically, so this scenario can't happen",
+      "Tests run AFTER a model is built, against the resulting data, they validate content, not structure. A not_null test on a column that silently became TEXT instead of NUMERIC would still pass, because a non-null string is still non-null",
+      "You just need to add more tests, there's no fundamental gap",
+      "Tests only work on staging models, not marts"
+    ],
+    correct: 1,
+    explanation: "This is the real mechanism gap: a normal test suite validates values, not the shape of the table itself, unless you specifically write a type-checking test. contract: {enforced: true} moves the check to BEFORE the table is built, comparing the declared data_type for every column against what the compiled query actually produces, and refuses to build on any mismatch."
+  },
+  {
+    question: "mart_aggregates has one row per (accommodation_id, month). What does that actually mean for a query that does ORDER BY cancelled_count DESC LIMIT 1 to find \"the month with the most cancellations\"?",
+    options: [
+      "It correctly returns the single month with the most cancellations across the whole portfolio",
+      "It returns the single best accommodation-month, one property's worst month, not the month with the most cancellations summed across every accommodation, because the rows were never grouped by month first",
+      "It returns an error, since LIMIT 1 isn't valid on a grouped table",
+      "It returns a random row among ties"
+    ],
+    correct: 1,
+    explanation: "This is a grain mismatch. The table's grain is (accommodation, month), one row per property per month, so picking the row with the highest cancelled_count picks one property's single worst month, not a portfolio-wide total. Getting the real answer requires summing across accommodations, grouped by month, before ranking."
+  },
+  {
+    question: "This project's documentation was full of \"why\" explanations (proration logic, timing caveats) but still missed the grain bug above. What does that tell you about documentation coverage?",
+    options: [
+      "It means the documentation was poorly written and needs a full rewrite",
+      "Richness isn't the same as completeness, a doc block only protects against mistakes someone already thought to write down, no matter how well-written it is once it exists. Grain is the single most common thing missing precisely because it feels too obvious to state",
+      "It means grain should never be documented since it changes too often",
+      "It means dbt tests are more reliable than any documentation"
+    ],
+    correct: 1,
+    explanation: "Doc blocks solve reuse and depth for the explanations someone already anticipated. They do nothing for a gap nobody has hit yet. Grain especially tends to go undocumented because it feels self-evident to whoever built the table, right up until someone queries it without knowing that fact."
+  },
+  {
+    question: "What's the difference between an exposure and a normal dbt ref() dependency?",
+    options: [
+      "They're the same thing, exposure is just older terminology for ref()",
+      "ref() tracks dependencies WITHIN the dbt DAG, model to model. An exposure tracks a dependency dbt can't see any other way, something outside the DAG entirely, like an application or agent that reads the built tables directly via SQL dbt never compiled",
+      "Exposures are only used for BI dashboards, never for applications",
+      "ref() is for staging models, exposures are for marts"
+    ],
+    correct: 1,
+    explanation: "An exposure exists specifically so a dbt build can flag \"this change affects X\" even when X's code lives entirely outside the dbt project and dbt has never executed a line of it. Without one, dropping a column an external agent depends on would build successfully today and only surface as a broken agent weeks later."
+  },
+  {
+    question: "Why did this project apply contract: {enforced: true} to mart_aggregates but deliberately NOT to mart_kpi (at least initially)?",
+    options: [
+      "Random choice, both could have been contracted equally well",
+      "mart_kpi is built on top of mart_aggregates, so a contract on the upstream model protects every downstream consumer transitively, and mart_kpi's derived columns (rounding decisions per KPI) had open questions not yet resolved, a real reason to defer, not an oversight",
+      "mart_kpi can never have a contract because it uses division",
+      "Because mart_kpi doesn't have any columns"
+    ],
+    correct: 1,
+    explanation: "Contracts don't have to be applied everywhere at once. Starting at the model with the most downstream leverage (the one everything else is built from) protects the most ground for the least effort, and it's reasonable to defer a contract on a model whose exact type/precision decisions haven't been finalized yet."
+  },
+  {
+    question: "Two ways exist to close the grain-mismatch gap found in this pill. Which is the preferred one, and why?",
+    options: [
+      "Add a warning comment in the query every time someone writes it, since a dedicated mart is too much overhead",
+      "Fix it at the mart layer: build a dedicated table already grained and summed the right way, so the dangerous, ungrouped table simply isn't there for a future query to misuse. A grain-specific doc block is the fallback when that's not immediately possible",
+      "Always prefer documentation over a new mart, since new marts always add tech debt",
+      "Neither works, the only fix is training a smarter model"
+    ],
+    correct: 1,
+    explanation: "Removing the possibility of a mistake at its root (a mart that's already correctly grained) beats documenting around a mistake that's still structurally possible. The second option, a doc block explicitly stating the grain and required GROUP BY, is a reasonable fallback when a new mart isn't feasible yet, but it still relies on someone reading it."
+  }
+];
+---
+
+<BaseLayout
+  title="Quiz: Doc Blocks, Contracts & Grain | Semantic Layer Pill 2"
+  description="Test your understanding of dbt doc blocks, exposures, contracts, and the grain mismatch that richer documentation alone didn't catch."
+>
+  <section class="pill-quiz-page">
+    <div class="container">
+      <a href="/blog/semantic-layer-pill-2-business-logic-and-grain" class="back-link">&larr; Back to Pill 2</a>
+
+      <div class="pill-header">
+        <div class="badge badge-series" style="margin-bottom: 0.5rem;">Pill 2 · Doc Blocks & Grain</div>
+        <h1>Quiz: Governance vs. Coverage</h1>
+        <p class="pill-lead">
+          These questions test whether you can tell the difference between documentation
+          that's well-written and documentation that's complete, and whether you understood
+          why a contract catches something a test suite can't.
+        </p>
+      </div>
+
+      <Quiz
+        title="Pill 2: Doc Blocks, Exposures & Contracts"
+        questions={questions}
+      />
+
+      <div class="pill-footer glass-card">
+        <h3>How did it go?</h3>
+        <p>
+          If you scored below 70%, re-read <strong>Pill 2</strong>, and if you can, actually
+          run the contract-break exercise yourself: cast a column to TEXT, run dbt build,
+          and watch it refuse. Seeing the compile-time failure land makes "before vs. after
+          the table exists" concrete in a way reading about it doesn't.
+        </p>
+        <div class="pill-footer-links">
+          <a href="/blog/semantic-layer-pill-2-business-logic-and-grain" class="btn btn-secondary btn-sm">Re-read Pill 2</a>
+          <a href="/pills/semantic-layer-quiz-3" class="btn btn-primary btn-sm">Next: Pill 3 Quiz &mdash; Routing</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .pill-quiz-page {
+    padding: 3.5rem 0 5rem;
+  }
+
+  .back-link {
+    display: inline-block;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.8rem;
+    transition: color 0.2s ease;
+  }
+  .back-link:hover {
+    color: var(--accent-blue);
+  }
+
+  .badge-series {
+    background: var(--accent-blue);
+    color: #ffffff;
+  }
+
+  .pill-header {
+    max-width: 720px;
+    margin-bottom: 2rem;
+  }
+
+  .pill-header h1 {
+    font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+    margin-bottom: 0.8rem;
+    line-height: 1.3;
+  }
+
+  .pill-lead {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+    max-width: 640px;
+  }
+
+  .pill-footer {
+    margin-top: 2.5rem;
+    padding: 2rem;
+    background: var(--bg-card);
+  }
+
+  .pill-footer h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-main);
+  }
+
+  .pill-footer p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.7;
+    margin-bottom: 1.1rem;
+    max-width: 600px;
+  }
+
+  .pill-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+</style>

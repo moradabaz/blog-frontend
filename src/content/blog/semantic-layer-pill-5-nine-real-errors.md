@@ -87,6 +87,8 @@ If you only read one more thing from this project, make it [01-dbt-semantic-laye
 
 ---
 
+> **Test yourself: [Pill 5 Quiz: Bugs That Never Threw an Error](/pills/semantic-layer-quiz-5)**
+
 This closes the Semantic Layer Pills series. If you've been running each pill's commands as you went, you now have a working copy of every stage this series covers, from zero context to a routed, access-controlled agent, plus a real transcript of your own for each one. Start from [Pill 0](/blog/semantic-layer-pill-0-zero-context) if you're catching up, or browse the [full series](/blog/semantic-layer-pills).
 
 > **Series: Semantic Layer Pills.** Source project: [pms-semantic-layer](https://github.com/moradabaz/pms-semantic-layer) · Full write-ups: [semantic-layer-pills](https://github.com/moradabaz/semantic-layer-pills).

@@ -96,6 +96,8 @@ The full [interview-prep track](https://github.com/moradabaz/semantic-layer-pill
 
 ---
 
+> **Test yourself: [Pill 1 Quiz: Does the Model Actually See Your Docs?](/pills/semantic-layer-quiz-1)**
+>
 > **Next up: [Pill 2: When One-Line Descriptions Aren't Enough](/blog/semantic-layer-pill-2-business-logic-and-grain)**
 >
 > **Series: Semantic Layer Pills.** Source project: [pms-semantic-layer](https://github.com/moradabaz/pms-semantic-layer) · Full write-ups: [semantic-layer-pills](https://github.com/moradabaz/semantic-layer-pills).

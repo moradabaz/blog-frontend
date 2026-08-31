@@ -1,0 +1,190 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Quiz from '../../components/Quiz.astro';
+
+const questions = [
+  {
+    question: "Why is a JOIN inside a staging model considered a real problem, not just a style preference?",
+    options: [
+      "It only matters because joins are slower to compute than a plain SELECT",
+      "It stops the staging model from being a faithful 1:1 mirror of its own source, a bug or future change in the joined table can silently change what it returns, and it hides fan-out risk (duplicated rows, if the joined table ever has more than one row per key) one layer earlier than anyone would think to check",
+      "dbt technically forbids joins in any model tagged as staging",
+      "It's a problem only when the joined table has more rows than the source table"
+    ],
+    correct: 1,
+    explanation: "Staging is supposed to be boring: rename, cast, nothing more. The moment it joins a second source, it inherits that source's future bugs and duplication risk invisibly, since nothing about a staging layer's role signals to a reader that a join, and its risks, might be hiding inside one."
+  },
+  {
+    question: "A staging model filtered out cancelled reservations early, on the theory that cancelled reservations should never count toward revenue. Why was that the wrong place to apply that rule?",
+    options: [
+      "It wasn't wrong, filtering early is always more efficient",
+      "The rule was specific to revenue, but a WHERE in staging deletes the information for every downstream consumer, not just the one the rule was meant for, a cancellation-rate KPI built later needed exactly the rows that filter had discarded",
+      "Filtering should happen in the raw source table instead, before staging",
+      "The rule was correct, but cancelled reservations should have been filtered in the semantic layer's YAML instead of SQL"
+    ],
+    correct: 1,
+    explanation: "A business rule that applies to one metric shouldn't get hoisted into a shared layer everyone reads from. The fix: staging keeps every row, unfiltered, always; the WHERE status = 'confirmed' filter gets applied explicitly inside whichever mart actually computes revenue, where it belongs."
+  },
+  {
+    question: "82% of reservations in this project started BEFORE their own accommodation's created_at. What did that number reveal?",
+    options: [
+      "A data corruption bug in the reservation table that needed a full rebuild",
+      "created_at was a technical row-insert timestamp (all accommodations were bulk-inserted in one seed run), not a real business fact about when a listing went live, using it as a business anchor produced nonsensical results",
+      "Reservations can legitimately be made before an accommodation exists, this is expected behavior",
+      "The 82% figure indicates a timezone bug in how dates were stored"
+    ],
+    correct: 1,
+    explanation: "This is the single most common trap in this project, appearing twice: a bulk-seeded created_at column looks like a business date but actually just means 'when the seed script ran.' The fix both times was adding a real business-date column (listed_at, booked_at) instead of repurposing a technical field."
+  },
+  {
+    question: "Why must revenue be prorated using the exact same logic as occupied_nights, when both feed into a ratio like ADR?",
+    options: [
+      "They don't need matching logic, as long as both numbers are individually correct",
+      "If two columns feed the same ratio (revenue over nights, cost over time) and only one side gets fixed to prorate correctly across month boundaries, the numerator and denominator now come from different sets of nights, silently producing a wrong ratio, a new, more subtle bug than the one being fixed",
+      "Proration only matters for revenue, nights don't need it since they're integers",
+      "This only matters for reservations under 7 nights long"
+    ],
+    correct: 1,
+    explanation: "Fixing one side of a ratio and not the other doesn't just leave a bug, it manufactures a new one: a cross-month stay would have its nights correctly split, but its full revenue still dumped into the start month, so ADR/RevPAN for that accommodation would be computed from mismatched pieces."
+  },
+  {
+    question: "Available nights for the current month were once capped at today's date, on the theory that future nights \"aren't available yet.\" Why did that break an invariant?",
+    options: [
+      "It didn't break anything, capping at today is always the safest choice",
+      "occupied_nights already counted confirmed future bookings (most reservations are made well ahead of the stay), so for the current month, occupied nights could exceed a capped available_nights, an invariant (occupied <= available) that should never be violated",
+      "The cap only caused a problem for accommodations added mid-month",
+      "Because Postgres doesn't allow date comparisons against current_date in a view"
+    ],
+    correct: 1,
+    explanation: "Occupancy and availability need to be measured on the same timeline. Removing the current_date cap fixed this: a month's capacity exists whether or not those calendar days have elapsed yet, matching how occupied_nights was already being counted."
+  },
+  {
+    question: "A one-time backfill added listed_at to every existing accommodation, closing the created_at bug. Why did the exact same bug reappear days later?",
+    options: [
+      "The backfill itself had a calculation error",
+      "The data simulator kept generating brand-new reservations with no awareness that listed_at now existed, eventually creating one starting before its own accommodation's listed_at, an invariant that had only ever held by historical coincidence, not by anything enforcing it going forward",
+      "Postgres silently reverted the backfilled column after a restart",
+      "The bug never actually reappeared, it was a monitoring false positive"
+    ],
+    correct: 1,
+    explanation: "A one-time backfill that establishes an invariant is not the same as an invariant that's enforced going forward. The real fix had to happen at the source generating new data (clamping the generator's date range against listed_at), not just in the historical rows the backfill touched."
+  },
+  {
+    question: "For the reservation source's freshness check, this project chose updated_at over booked_at, even though the rest of the project generally warns against trusting technical timestamps over real business dates. Why is that the right choice here?",
+    options: [
+      "It's a mistake, booked_at should have been used for consistency with the rest of the project",
+      "Freshness measures an OPERATIONAL fact (when did this table last get a write), not a business fact (when did the guest book), and updated_at is the one column proven to move on every write, including cancellations, which is exactly the right tool for that different question",
+      "updated_at was chosen arbitrarily, any column would have worked equally well",
+      "booked_at can't be used for freshness because it's a computed column"
+    ],
+    correct: 1,
+    explanation: "This is the one place the 'avoid technical timestamps' instinct would lead you wrong if applied blindly. Business-date columns and technical-timestamp columns aren't good or bad in isolation, they're the right or wrong tool depending on the actual question: 'what happened, from the business's perspective' needs a business date; 'when did this row last change' needs a technical timestamp."
+  }
+];
+---
+
+<BaseLayout
+  title="Quiz: 9 Real Errors | Semantic Layer Pill 5"
+  description="Test your understanding of the recurring pattern behind nine real, non-hallucination bugs found while building a dbt semantic layer: staging discipline, proration, and backfill vs. enforcement."
+>
+  <section class="pill-quiz-page">
+    <div class="container">
+      <a href="/blog/semantic-layer-pill-5-nine-real-errors" class="back-link">&larr; Back to Pill 5</a>
+
+      <div class="pill-header">
+        <div class="badge badge-series" style="margin-bottom: 0.5rem;">Pill 5 · 9 Real Errors</div>
+        <h1>Quiz: Bugs That Never Threw an Error</h1>
+        <p class="pill-lead">
+          These questions test whether you can spot the same pattern (a technical column
+          trusted to mean something it didn't) across nine differently-shaped bugs, not
+          just recall each one individually.
+        </p>
+      </div>
+
+      <Quiz
+        title="Pill 5: Staging, Proration & Invariants"
+        questions={questions}
+      />
+
+      <div class="pill-footer glass-card">
+        <h3>How did it go?</h3>
+        <p>
+          If you scored below 70%, re-read <strong>Pill 5</strong>, and if you have your own
+          checkout, run the query that confirms zero reservations start before their
+          accommodation's listed_at. Confirming an invariant holds on real data is a better
+          test of understanding than remembering the story behind it.
+        </p>
+        <div class="pill-footer-links">
+          <a href="/blog/semantic-layer-pill-5-nine-real-errors" class="btn btn-secondary btn-sm">Re-read Pill 5</a>
+          <a href="/blog/semantic-layer-pills" class="btn btn-primary btn-sm">Back to the full series</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .pill-quiz-page {
+    padding: 3.5rem 0 5rem;
+  }
+
+  .back-link {
+    display: inline-block;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.8rem;
+    transition: color 0.2s ease;
+  }
+  .back-link:hover {
+    color: var(--accent-blue);
+  }
+
+  .badge-series {
+    background: var(--accent-blue);
+    color: #ffffff;
+  }
+
+  .pill-header {
+    max-width: 720px;
+    margin-bottom: 2rem;
+  }
+
+  .pill-header h1 {
+    font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+    margin-bottom: 0.8rem;
+    line-height: 1.3;
+  }
+
+  .pill-lead {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+    max-width: 640px;
+  }
+
+  .pill-footer {
+    margin-top: 2.5rem;
+    padding: 2rem;
+    background: var(--bg-card);
+  }
+
+  .pill-footer h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-main);
+  }
+
+  .pill-footer p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.7;
+    margin-bottom: 1.1rem;
+    max-width: 600px;
+  }
+
+  .pill-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+</style>

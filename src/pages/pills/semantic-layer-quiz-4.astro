@@ -1,0 +1,189 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Quiz from '../../components/Quiz.astro';
+
+const questions = [
+  {
+    question: "agent_scope.yml says the agent can only read from public_marts. Why enforce that with a dedicated Postgres role instead of checking the generated SQL text in Python before running it?",
+    options: [
+      "A thorough enough text check is just as safe as a database role",
+      "A text check has to anticipate every way a forbidden reference could be phrased, and LLM output isn't fully predictable. A Postgres role's privileges are checked by the database engine on every single statement, with no code path around it, regardless of how the SQL was phrased or what the model \"meant\"",
+      "Text checks are fine, but they're slower than a database role",
+      "Postgres roles are only needed for multi-user applications, not single-agent ones"
+    ],
+    correct: 1,
+    explanation: "This is the general 'defense should live at the layer that can't be bypassed' principle. An app-level check only runs if someone remembers to call it and only catches phrasings its author predicted. A role's grant is enforced structurally, by Postgres itself, on every statement, with no way around it from the SQL side."
+  },
+  {
+    question: "If the database role already blocks all writes (no INSERT/UPDATE/DELETE granted), is the earlier is_read_only application-level check now redundant?",
+    options: [
+      "Yes, once the role blocks writes there's nothing left for is_read_only to catch",
+      "No, they protect against different things. The DB role stops privilege violations (writing, reading a forbidden schema). is_read_only stops a syntactically-read-only but still undesirable statement shape, like multiple stacked SELECT statements, which the database's permission system was never designed to catch",
+      "No, but only because Postgres roles are unreliable and need a backup",
+      "Yes, keeping both just adds unnecessary latency"
+    ],
+    correct: 1,
+    explanation: "Defense-in-depth means each layer catches what the other structurally can't, not that one makes the other pointless. A multi-statement payload where every individual statement is a SELECT would pass a read-only role's permission check happily, but it's still a query shape the agent should never construct, which is exactly what is_read_only's single-statement check exists to catch."
+  },
+  {
+    question: "agent_scope.yml declares max_rows: 500. Where does that number actually get enforced?",
+    options: [
+      "The agent checks that the generated SQL text includes a LIMIT 500 clause",
+      "cur.fetchmany(500) at the Python/psycopg2 layer, independent of whatever the SQL itself says, the database can return however many rows match, but the application simply never pulls more than 500 of them into memory",
+      "Postgres automatically caps every query at 500 rows once a role is marked read-only",
+      "It's a soft guideline with no actual enforcement mechanism"
+    ],
+    correct: 1,
+    explanation: "Trusting generated SQL to self-limit is fragile for the same reason trusting it to self-restrict schemas is fragile, the model might omit a LIMIT, or a query might not even need one to return far more rows than intended (a GROUP BY with no filter). Enforcing the cap at execution time, independent of the generated text, is the same principle Pill 0's fetchmany(6) used, just scaled for a real agent."
+  },
+  {
+    question: "Now that the agent gets real, scoped schema context (not zero context), can validation layers like is_read_only and the database role be relaxed?",
+    options: [
+      "Yes, once context is good enough, the model won't generate anything unsafe",
+      "No. Good context fixes a specific failure mode, guessing a table/column that doesn't exist. It does nothing about a query that references the RIGHT tables/columns but combines them wrong (a bad join, an ignored caveat). A well-grounded query can still be confidently, plausibly wrong",
+      "Only the DB role can be relaxed, is_read_only should stay",
+      "Relaxation is fine as long as the schema is small"
+    ],
+    correct: 1,
+    explanation: "Context and validation defend against different things and neither substitutes for the other. Good context lowers the RATE of certain mistakes, it doesn't change what happens when a mistake still occurs, or when match_question_type picks the wrong type and scopes the agent to tables that don't actually answer the question."
+  },
+  {
+    question: "Switching match_question_type from substring to word-set matching fixed the \"normalized daily cost\" bug. What NEW problem did that same fix introduce?",
+    options: [
+      "None, the fix was strictly an improvement with no downsides",
+      "Word-count ties became far more likely, since many different keywords across different types now share the same word count, and a real question tied between two types, silently resolving to whichever happened to appear first in the YAML, not the semantically correct one",
+      "It made the matcher significantly slower on large routing configs",
+      "It broke the fallback mechanism entirely"
+    ],
+    correct: 1,
+    explanation: "This is a real, live example of a fix changing the shape of failure rather than eliminating failure. Once matching become word-set based, word count became the tie-break signal, and multiple keywords sharing a word count made ties common. No smarter generic tie-break formula could resolve this correctly, since only a person designing the routing entries knows which of two equally-specific keywords should actually win, the fix was a longer, more specific keyword on the entry that should win."
+  },
+  {
+    question: "After fixing the cancellation-ranking bug once, the exact same question, same fixed config, same explicit warning in the notes, produced a wrong answer again on a later run. What does that tell you about what \"fixed\" means for an LLM-based system?",
+    options: [
+      "It means the fix didn't actually work and needs to be redone from scratch",
+      "\"Fixed\" means the average case improved and a known trigger is gone, not that this exact mistake can never happen again, an LLM is not a deterministic function of (prompt, context), the same inputs can produce different outputs across calls",
+      "It means the routing config has a syntax error that only sometimes triggers",
+      "It means the database itself is returning inconsistent results"
+    ],
+    correct: 1,
+    explanation: "This is the finding this whole series keeps circling back to. Documentation and good context lower the probability of a given failure, they don't reduce it to zero. The only thing that catches a bug that's only sometimes present is checking the actual answer against the actual data every time a real question is answered, not just once during development."
+  },
+  {
+    question: "The fixed routing config got 6/6 right on the original six questions. Six new, ordinary (not adversarial) questions then found four more real bugs immediately. What does that say about claiming a system is \"robust\"?",
+    options: [
+      "It proves 6/6 was a fluke and the whole system is unreliable",
+      "Robustness isn't a property a system has in the abstract, it's relative to the specific inputs actually tried against it. A config can look completely solid against its test set and still have gaps the next slightly-different real question finds, which is exactly what happened here",
+      "It means the new questions were unfairly difficult and shouldn't count",
+      "It means routing configs should never be trusted, full stop"
+    ],
+    correct: 1,
+    explanation: "The most serious of the four new bugs wasn't the one that errored (a false-positive SQL extraction) or the one that was obviously a coincidence (a broken CASE that happened to print the right season). It was a rigid keyword causing the model to silently answer a different, adjacent question than the one actually asked, without flagging the swap, the most dangerous shape of failure in this entire series, because nothing about the response signals that it happened."
+  }
+];
+---
+
+<BaseLayout
+  title="Quiz: Real Access Control | Semantic Layer Pill 4"
+  description="Test your understanding of database-level access control, why good context still needs validation, and why robustness is relative to the questions you've actually tried."
+>
+  <section class="pill-quiz-page">
+    <div class="container">
+      <a href="/blog/semantic-layer-pill-4-access-control" class="back-link">&larr; Back to Pill 4</a>
+
+      <div class="pill-header">
+        <div class="badge badge-series" style="margin-bottom: 0.5rem;">Pill 4 · Access Control</div>
+        <h1>Quiz: Guarantees That Can't Be Bypassed</h1>
+        <p class="pill-lead">
+          These questions test the hardest part of this series: why "it works, and I checked
+          it" is a claim about a specific moment, not a permanent property of the system.
+        </p>
+      </div>
+
+      <Quiz
+        title="Pill 4: Access Control, Validation & Robustness"
+        questions={questions}
+      />
+
+      <div class="pill-footer glass-card">
+        <h3>How did it go?</h3>
+        <p>
+          If you scored below 70%, re-read <strong>Pill 4</strong>, and if you have your own
+          checkout, actually try to break the pms_agent role with the three psql commands.
+          A real "permission denied" in your own terminal is worth more than trusting the
+          YAML says it should work.
+        </p>
+        <div class="pill-footer-links">
+          <a href="/blog/semantic-layer-pill-4-access-control" class="btn btn-secondary btn-sm">Re-read Pill 4</a>
+          <a href="/pills/semantic-layer-quiz-5" class="btn btn-primary btn-sm">Next: Pill 5 Quiz &mdash; 9 Real Errors</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .pill-quiz-page {
+    padding: 3.5rem 0 5rem;
+  }
+
+  .back-link {
+    display: inline-block;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.8rem;
+    transition: color 0.2s ease;
+  }
+  .back-link:hover {
+    color: var(--accent-blue);
+  }
+
+  .badge-series {
+    background: var(--accent-blue);
+    color: #ffffff;
+  }
+
+  .pill-header {
+    max-width: 720px;
+    margin-bottom: 2rem;
+  }
+
+  .pill-header h1 {
+    font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+    margin-bottom: 0.8rem;
+    line-height: 1.3;
+  }
+
+  .pill-lead {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+    max-width: 640px;
+  }
+
+  .pill-footer {
+    margin-top: 2.5rem;
+    padding: 2rem;
+    background: var(--bg-card);
+  }
+
+  .pill-footer h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-main);
+  }
+
+  .pill-footer p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.7;
+    margin-bottom: 1.1rem;
+    max-width: 600px;
+  }
+
+  .pill-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+</style>

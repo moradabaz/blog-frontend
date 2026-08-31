@@ -101,6 +101,8 @@ Go deeper in [02-agent-routing-and-scope.md](https://github.com/moradabaz/semant
 
 ---
 
+> **Test yourself: [Pill 3 Quiz: A Map of Where to Look](/pills/semantic-layer-quiz-3)**
+>
 > **Next up: [Pill 4: Locking It Down With Real Access Control](/blog/semantic-layer-pill-4-access-control)**
 >
 > **Series: Semantic Layer Pills.** Source project: [pms-semantic-layer](https://github.com/moradabaz/pms-semantic-layer) · Full write-ups: [semantic-layer-pills](https://github.com/moradabaz/semantic-layer-pills).

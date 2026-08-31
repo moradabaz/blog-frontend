@@ -1,0 +1,189 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Quiz from '../../components/Quiz.astro';
+
+const questions = [
+  {
+    question: "If a column's description exists in _marts.md but the function that builds the prompt never reads that file, has the model \"seen\" the documentation?",
+    options: [
+      "Yes, dbt automatically syncs all documentation to any LLM that queries the database",
+      "No. The model only ever sees the literal string handed to it as the system prompt, if a description never gets read into that string, it doesn't exist from the model's point of view, no matter how well it's written in the repo",
+      "Yes, as long as dbt docs generate has been run at some point",
+      "It depends on whether the model has internet access"
+    ],
+    correct: 1,
+    explanation: "There's exactly one channel: the messages list sent to the API. If you want to check whether an agent is \"giving the model enough context,\" the only place that actually matters is the literal text built right before the API call, not a YAML file, not an intention, not a docs site nobody's prompt reads."
+  },
+  {
+    question: "Why does the schema-context builder query information_schema live, on every request, instead of trusting what _marts.yml says the columns are?",
+    options: [
+      "Because information_schema is required by dbt",
+      "Because a YAML file can drift out of sync with the real database the moment someone changes a column without updating the docs, querying Postgres directly guarantees the prompt reflects the schema as it actually is right now",
+      "Because live queries are faster than reading a file",
+      "There's no real reason, it's just a style choice"
+    ],
+    correct: 1,
+    explanation: "This is the same principle used throughout the project: don't trust documentation to be in sync with reality, ask the source of truth directly. information_schema is cheap to query (it's an indexed system catalog), so there's no real cost to always checking live rather than caching something that could quietly go stale."
+  },
+  {
+    question: "A one-sentence description says \"Average Daily Rate: revenue / occupied_nights.\" Why does stating the formula matter more than just naming the column well?",
+    options: [
+      "It doesn't matter, a clear name is just as good as a formula",
+      "A name only tells a reader what to call something. A formula tells them (or a model) exactly how to compute it correctly from scratch, closing off an entire category of error where the model reconstructs the wrong ratio",
+      "Formulas are only useful for numeric columns, not for descriptions in general",
+      "Because dbt requires descriptions to include a calculation"
+    ],
+    correct: 1,
+    explanation: "\"Average Daily Rate\" tells you what the column is called. \"revenue / occupied_nights\" tells you, or an LLM, how to compute it correctly if it ever has to be rebuilt from raw ingredients. A later pill shows exactly what happens when a model has to guess the formula instead of reading it: it reconstructs RevPAN's formula and calls it ADR."
+  },
+  {
+    question: "Why does dumping the entire semantic layer into every prompt work in Pill 1's experiment but NOT scale to a real production warehouse?",
+    options: [
+      "It always scales fine, context window size is not a real constraint",
+      "This experiment used 4 tables and 37 columns total. A warehouse with hundreds of tables would blow past context limits and drown the model in irrelevant noise long before reaching those tables",
+      "It only fails because the model used here has a small context window",
+      "It scales fine as long as descriptions are kept short"
+    ],
+    correct: 1,
+    explanation: "The clean 6/6 result in Pill 1 tests whether documentation alone helps, on a genuinely tiny schema. It says nothing about whether \"just send everything\" is viable once the schema is large. That's exactly the problem routing (Pill 3) exists to solve: hand over only the 1-2 tables a specific question needs, regardless of how big the full warehouse is."
+  },
+  {
+    question: "Why does this project treat documentation as a defense mechanism rather than just a nice-to-have for readability?",
+    options: [
+      "Documentation exists purely so a BI tool can render a data catalog page",
+      "Every doc block worth writing in this project exists because a wrong number already happened once, it's a record of a previously wrong assumption, written down so it can't be silently repeated by a person OR a model doing text-to-SQL",
+      "Documentation is optional and doesn't affect correctness at all",
+      "It matters only for compliance/audit purposes, not for correctness"
+    ],
+    correct: 1,
+    explanation: "This reframes documentation as a defense against a specific, already-observed failure mode (Pill 0's silent hallucination and the confidently-wrong-formula bugs), not decoration. A semantic layer's docs are most valuable exactly where the \"obvious\" reading of a column name would lead someone, human or model, astray."
+  },
+  {
+    question: "staging models in this project are described as \"boring on purpose\": one source, no joins, no business logic. What's the actual risk if a staging model breaks that rule?",
+    options: [
+      "None, staging is internal and nobody ever queries it directly",
+      "It becomes slower to compile",
+      "It stops being a faithful 1:1 mirror of its source, so a bug or a future change in the joined table can silently change what the staging model returns, and it hides fan-out risk one layer earlier than anyone would think to check",
+      "dbt refuses to build a staging model that contains a join"
+    ],
+    correct: 2,
+    explanation: "A staging model is supposed to be a trustworthy, unopinionated mirror of one raw table. The moment it joins another source, it inherits that source's bugs and any future duplication risk (if the joined table ever gets more than one row per key), completely invisibly, since nothing about a staging layer's structure signals that risk to a downstream reader."
+  },
+  {
+    question: "What's the actual purpose of separating staging and marts into different Postgres schemas, beyond just organizational tidiness?",
+    options: [
+      "It's purely cosmetic, both schemas contain equally trustworthy data",
+      "Separate schemas let you GRANT SELECT on marts alone, staging is an uncurated 1:1 mirror with no business-rule guarantees, and if a consumer (a BI tool, an agent) could query it directly, every fix made at the mart layer could be silently bypassed",
+      "Schemas are required by Postgres for any table with more than 10 columns",
+      "It only matters for naming collisions between staging and marts models"
+    ],
+    correct: 1,
+    explanation: "This is a security boundary, not just tidiness. If access control can only be granted at the schema level, keeping curated, tested, documented marts in their own schema is what makes it possible to expose only the safe layer to any real consumer, including an LLM agent, which is exactly what Pill 4 enforces at the database level."
+  }
+];
+---
+
+<BaseLayout
+  title="Quiz: Documentation as a Defense | Semantic Layer Pill 1"
+  description="Test your understanding of how dbt documentation actually reaches an LLM prompt, why formulas matter more than names, and why staging models stay boring on purpose."
+>
+  <section class="pill-quiz-page">
+    <div class="container">
+      <a href="/blog/semantic-layer-pill-1-column-descriptions" class="back-link">&larr; Back to Pill 1</a>
+
+      <div class="pill-header">
+        <div class="badge badge-series" style="margin-bottom: 0.5rem;">Pill 1 · Column Descriptions</div>
+        <h1>Quiz: Does the Model Actually See Your Docs?</h1>
+        <p class="pill-lead">
+          These questions test the mechanism, not the vocabulary: how documentation gets
+          from a YAML file into an actual API call, and why that path matters.
+        </p>
+      </div>
+
+      <Quiz
+        title="Pill 1: Column Descriptions & the Prompt Pipeline"
+        questions={questions}
+      />
+
+      <div class="pill-footer glass-card">
+        <h3>How did it go?</h3>
+        <p>
+          If you scored below 70%, re-read <strong>Pill 1</strong>, and if you have your own
+          checkout running, open the transcript your own run produced and find the exact
+          "Table: public_marts..." block. That's the literal text the model saw, seeing it
+          for real makes the "only what's in the string" rule concrete.
+        </p>
+        <div class="pill-footer-links">
+          <a href="/blog/semantic-layer-pill-1-column-descriptions" class="btn btn-secondary btn-sm">Re-read Pill 1</a>
+          <a href="/pills/semantic-layer-quiz-2" class="btn btn-primary btn-sm">Next: Pill 2 Quiz &mdash; Doc Blocks & Grain</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .pill-quiz-page {
+    padding: 3.5rem 0 5rem;
+  }
+
+  .back-link {
+    display: inline-block;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.8rem;
+    transition: color 0.2s ease;
+  }
+  .back-link:hover {
+    color: var(--accent-blue);
+  }
+
+  .badge-series {
+    background: var(--accent-blue);
+    color: #ffffff;
+  }
+
+  .pill-header {
+    max-width: 720px;
+    margin-bottom: 2rem;
+  }
+
+  .pill-header h1 {
+    font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+    margin-bottom: 0.8rem;
+    line-height: 1.3;
+  }
+
+  .pill-lead {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+    max-width: 640px;
+  }
+
+  .pill-footer {
+    margin-top: 2.5rem;
+    padding: 2rem;
+    background: var(--bg-card);
+  }
+
+  .pill-footer h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-main);
+  }
+
+  .pill-footer p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.7;
+    margin-bottom: 1.1rem;
+    max-width: 600px;
+  }
+
+  .pill-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+</style>

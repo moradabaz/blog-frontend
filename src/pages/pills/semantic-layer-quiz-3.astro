@@ -1,0 +1,190 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Quiz from '../../components/Quiz.astro';
+
+const questions = [
+  {
+    question: "agent_routing.yml and agent_scope.yml sound similar. What's the actual distinction between routing and scope?",
+    options: [
+      "There isn't one, they're two files that do the same job for redundancy",
+      "Routing answers \"given this question, which tables should I query and how do they join\", a correctness/efficiency concern. Scope answers \"regardless of the question, what am I never allowed to touch\", a safety/access-control concern that holds even for a perfectly-routed query",
+      "Routing is for read queries, scope is for write queries",
+      "Scope is deprecated in favor of routing"
+    ],
+    correct: 1,
+    explanation: "These answer two unrelated questions about the same request. Routing is closer to query planning, getting to the right data. Scope is closer to authorization, a hard boundary independent of routing. A request has to pass both, but conflating them into one file would make it harder to reason about which one caught a given failure."
+  },
+  {
+    question: "This project has both accommodation.property_manager_id and reservation.property_manager_id. Why does a routing entry's notes field need to specify which one to use, instead of treating them as interchangeable?",
+    options: [
+      "They're always identical, the notes field is just extra caution",
+      "One reflects the CURRENT manager, the other is a frozen snapshot at booking time, they diverge exactly when an accommodation gets reassigned, and a query that's usually right but occasionally picks the wrong one is indistinguishable from a query that's always right until that one case happens, producing a plausible, silently wrong number",
+      "Only one of the two columns actually exists in the real schema",
+      "The notes field is purely cosmetic documentation with no effect on query correctness"
+    ],
+    correct: 1,
+    explanation: "\"Most of the time\" is exactly the failure mode this whole project defends against, a query that's usually right is indistinguishable from one that's always right until the edge case hits. Only a person who understands the business can decide which semantically-similar column is correct for a given question shape, that's what the notes field exists to encode."
+  },
+  {
+    question: "Under the OLD substring-matching version of match_question_type, why did a question containing \"normalized daily cost\" fail to match the keyword \"normalized cost\"?",
+    options: [
+      "Because substring matching is case-sensitive and the casing didn't match",
+      "Because the check looked for the exact literal phrase \"normalized cost\" appearing verbatim in the question, and the word \"daily\" inserted in the middle broke that exact substring, so the keyword was never even considered",
+      "Because the keyword list didn't include that phrase at all",
+      "Because the question was too long for the matcher to process"
+    ],
+    correct: 1,
+    explanation: "Plain substring matching (keyword.lower() in question_lower) requires the exact phrase to appear unbroken. \"Normalized daily cost\" doesn't contain the unbroken substring \"normalized cost\", so it silently fails to match. The fix was switching to word-set matching: does every word in the keyword appear somewhere in the question, regardless of order or what's inserted between them."
+  },
+  {
+    question: "Why does a routing config need an explicit fallback for questions that match no question_type, rather than letting the model just answer from general knowledge?",
+    options: [
+      "It doesn't need one, unmatched questions are rare enough to ignore",
+      "Falling back to general knowledge is, verbatim, the exact failure this entire project exists to defend against, a plausible answer with no grounding in the real schema. An explicit fallback (ask for clarification, never guess) treats \"none of the above\" as a real, specified case instead of an implicit assumption of 100% keyword coverage",
+      "Because dbt requires every question_type to have a fallback defined",
+      "Fallbacks are only needed in development, not in production"
+    ],
+    correct: 1,
+    explanation: "A routing guide that only defines the matched cases is incomplete by construction, it silently assumes perfect coverage, which is never true, and leaves the highest-risk case (an unrecognized question) completely unspecified. The agent asking \"I don't have a rule for this, can you rephrase?\" is a feature: an honest \"I don't know\" beats a confident wrong answer every time."
+  },
+  {
+    question: "Two question_types both have a keyword that could match the same real question. What's the matching_rules policy this project uses to resolve that ambiguity?",
+    options: [
+      "Whichever type appears first in the YAML file always wins",
+      "Prefer the more specific type, and keep generic metric keywords (like a bare \"revenue\") out of specific types' keyword lists so they don't duplicate what the generic type already owns",
+      "Ask the user to manually pick which type they meant, every time",
+      "Match both types and merge their contexts into one prompt"
+    ],
+    correct: 1,
+    explanation: "matching_rules.on_multiple_matches: prefer_the_more_specific_type is the stated policy, paired with a discipline of not duplicating a generic metric word onto a more specific type's keyword list. This is trickier than it sounds: adding a new specific type can immediately reintroduce a fresh ambiguity if its own natural keywords overlap with the generic type it's meant to specialize."
+  },
+  {
+    question: "agent_scope.yml restricted the agent to the marts schema only. Roughly half of agent_routing.yml's entries originally pointed at staging tables. What was the actual fix?",
+    options: [
+      "Relax the scope config to also allow staging, since routing already decided it was needed",
+      "Recognize that \"marts only\" doesn't mean \"aggregates only\": build governed, tested, documented fact/dimension marts (like a PII-scrubbed fct_reservation and a flattened dim_accommodation) and repoint every routing entry that referenced staging at one of those instead",
+      "Delete the routing entries that needed row-level data, since marts can only hold aggregates",
+      "Give the agent two separate database connections, one for staging and one for marts"
+    ],
+    correct: 1,
+    explanation: "The fix wasn't to weaken the schema restriction, it was to recognize a mart can be a governed fact or dimension table too, not just a KPI rollup. This is the standard warehouse layering pattern: staging (uncurated, internal) then marts (curated, tested, access-controlled, both aggregate AND row-level/dimensional) then consumers that only ever see the last layer."
+  },
+  {
+    question: "In Pill 3's own experiment, narrower routed context traded a right answer for an honest refusal on the ADR-vs-cost question (the routed context excluded the cost table, so the model said it couldn't answer). Is that outcome good, bad, or something else?",
+    options: [
+      "It's purely bad, routing made the agent strictly worse than the full-context version",
+      "It's a real, not-free trade-off: an honest refusal is safer than a wrong answer, but it's still not the goal. The correct long-term fix is adding the missing table to that routing entry, not accepting the refusal as good enough forever",
+      "It's purely good, refusals are always the best possible outcome regardless of cause",
+      "It has no practical difference from the full-context version"
+    ],
+    correct: 1,
+    explanation: "Routing's job is reducing noise, and it did that here (no hallucinated tables). But it can accidentally remove a table a question genuinely needs, trading a correct answer for an honest \"I can't\". That's a better failure than being confidently wrong, but it's coverage debt that still needs fixing, which is exactly what happened later when mart_kpi was added to that entry."
+  }
+];
+---
+
+<BaseLayout
+  title="Quiz: Routing & Its Limits | Semantic Layer Pill 3"
+  description="Test your understanding of routing vs. scope, why substring matching missed a real question, fallback design, and why a routing config passing review can still hide bugs."
+>
+  <section class="pill-quiz-page">
+    <div class="container">
+      <a href="/blog/semantic-layer-pill-3-routing" class="back-link">&larr; Back to Pill 3</a>
+
+      <div class="pill-header">
+        <div class="badge badge-series" style="margin-bottom: 0.5rem;">Pill 3 · Routing</div>
+        <h1>Quiz: A Map of Where to Look</h1>
+        <p class="pill-lead">
+          These questions test whether you understood why routing reduces noise without
+          guaranteeing correctness, and why a config that looks fine on paper can still
+          misroute a real question.
+        </p>
+      </div>
+
+      <Quiz
+        title="Pill 3: Routing, Fallbacks & Ambiguity"
+        questions={questions}
+      />
+
+      <div class="pill-footer glass-card">
+        <h3>How did it go?</h3>
+        <p>
+          If you scored below 70%, re-read <strong>Pill 3</strong>, and if you have your own
+          checkout, actually do the "revert routing.py" exercise. Watching a real question
+          fall through to the wrong type on your own transcript is a much stronger memory
+          than reading the explanation.
+        </p>
+        <div class="pill-footer-links">
+          <a href="/blog/semantic-layer-pill-3-routing" class="btn btn-secondary btn-sm">Re-read Pill 3</a>
+          <a href="/pills/semantic-layer-quiz-4" class="btn btn-primary btn-sm">Next: Pill 4 Quiz &mdash; Access Control</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .pill-quiz-page {
+    padding: 3.5rem 0 5rem;
+  }
+
+  .back-link {
+    display: inline-block;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.8rem;
+    transition: color 0.2s ease;
+  }
+  .back-link:hover {
+    color: var(--accent-blue);
+  }
+
+  .badge-series {
+    background: var(--accent-blue);
+    color: #ffffff;
+  }
+
+  .pill-header {
+    max-width: 720px;
+    margin-bottom: 2rem;
+  }
+
+  .pill-header h1 {
+    font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+    margin-bottom: 0.8rem;
+    line-height: 1.3;
+  }
+
+  .pill-lead {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+    max-width: 640px;
+  }
+
+  .pill-footer {
+    margin-top: 2.5rem;
+    padding: 2rem;
+    background: var(--bg-card);
+  }
+
+  .pill-footer h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-main);
+  }
+
+  .pill-footer p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.7;
+    margin-bottom: 1.1rem;
+    max-width: 600px;
+  }
+
+  .pill-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+</style>

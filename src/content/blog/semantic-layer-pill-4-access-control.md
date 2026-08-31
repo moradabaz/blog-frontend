@@ -83,6 +83,8 @@ Go deeper in [03-live-agent.md](https://github.com/moradabaz/semantic-layer-pill
 
 ---
 
+> **Test yourself: [Pill 4 Quiz: Guarantees That Can't Be Bypassed](/pills/semantic-layer-quiz-4)**
+>
 > **Next up: [Pill 5: 9 Real Errors You'll Hit Building a Semantic Layer](/blog/semantic-layer-pill-5-nine-real-errors)**
 >
 > **Series: Semantic Layer Pills.** Source project: [pms-semantic-layer](https://github.com/moradabaz/pms-semantic-layer) · Full write-ups: [semantic-layer-pills](https://github.com/moradabaz/semantic-layer-pills).

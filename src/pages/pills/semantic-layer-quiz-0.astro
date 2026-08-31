@@ -1,0 +1,189 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Quiz from '../../components/Quiz.astro';
+
+const questions = [
+  {
+    question: "An LLM with zero schema context answers a business question with a plausible-sounding number and no SQL at all. Why is this worse than the model writing SQL against a table that doesn't exist?",
+    options: [
+      "It isn't worse, both are equally bad hallucinations",
+      "Because the wrong table name throws a loud Postgres error someone will notice immediately, while the plausible number has no error to catch it and can go straight into a report",
+      "Because writing no SQL means the model is broken and needs to be replaced",
+      "Because a missing table name is easier to fix in the schema"
+    ],
+    correct: 1,
+    explanation: "Both are hallucinations, the model invents a table name the same way it invents a number. The difference is entirely about what happens downstream: a wrong table name is a visible failure (Postgres rejects it, someone notices). A confident, reasonable-looking number with no query behind it is a silent failure, nothing catches it before it reaches a decision-maker."
+  },
+  {
+    question: "Why does the model invent table names like 'unit' or 'bookings' instead of guessing randomly?",
+    options: [
+      "It's genuinely random, LLMs have no pattern to their guesses",
+      "It's retrieving names from a hidden config file it wasn't supposed to see",
+      "It's pattern-matching against thousands of similar schemas seen during training and producing the most statistically plausible name for that domain, not the one that's true for this specific database",
+      "It always defaults to generic English nouns when it lacks context"
+    ],
+    correct: 2,
+    explanation: "The model has seen many booking/property-management schemas during training and produces the most likely table name for that kind of domain. It has no way to know the difference between 'statistically plausible' and 'actually true for this database', because it was never shown the real schema."
+  },
+  {
+    question: "In the read-only SQL validator, why does it matter that SQL comments get stripped BEFORE checking whether the query starts with SELECT or WITH?",
+    options: [
+      "It doesn't matter, comments are ignored by Postgres anyway",
+      "A comment placed before the SELECT or after the final semicolon could make a perfectly safe query fail the check for the wrong reason, this actually happened and caused false failures misattributed to the model",
+      "Stripping comments makes the query run faster",
+      "Comments need to be stripped so the SQL can be logged cleanly"
+    ],
+    correct: 1,
+    explanation: "Order matters here: checking string prefixes before stripping comments meant a query starting with a comment (or a legitimate WITH clause) could get rejected as unsafe even though it was a perfectly valid, safe query. In one earlier run of this exact experiment, 4 of 6 'failures' turned out to be the validator misfiring, not the model. Fixing the validator, not the model, was the correct move."
+  },
+  {
+    question: "Why is validating SQL by allowlist (\"does it start with SELECT/WITH, is it one statement\") safer than validating by denylist (\"does it avoid the word DROP\")?",
+    options: [
+      "Allowlists run faster than denylists",
+      "A denylist has to anticipate every dangerous phrasing in advance and is trivial to route around (comments, casing, alternate syntax); an allowlist only has to describe what's actually permitted",
+      "Denylists are only a problem for very large databases",
+      "There's no real difference, it's a matter of style"
+    ],
+    correct: 1,
+    explanation: "A denylist is a losing game: you have to predict every way something dangerous could be phrased, and LLM output is exactly the kind of thing that isn't fully predictable. An allowlist just asks a narrow, answerable question: does this look like exactly one read-only statement? Nothing else needs to be enumerated."
+  },
+  {
+    question: "fetchmany(6) at the Python driver layer caps how many rows your code pulls into memory. Does it reduce how much work Postgres does to answer a query with no WHERE and no LIMIT on a 10-million-row table?",
+    options: [
+      "Yes, Postgres stops scanning as soon as 6 rows are ready",
+      "No. fetchmany only limits what your own program reads AFTER Postgres has already done the full scan and sent everything; a real LIMIT clause (or a statement_timeout) is what would actually reduce Postgres' own work",
+      "Yes, but only for indexed tables",
+      "It depends on whether the table has a primary key"
+    ],
+    correct: 1,
+    explanation: "fetchmany happens at execute()-time-after: the query already ran, Postgres already scanned everything and sent the full result set over the wire, before your code decides how many rows to actually read off the cursor. It's like a truck delivering 10 million letters and you only opening 6, the truck still made the entire trip. Actually reducing Postgres' own work needs a LIMIT in the SQL itself (which can still be defeated by an ORDER BY that forces a full sort first) or a statement_timeout as the real backstop."
+  },
+  {
+    question: "Once you give the model the real table and column names (the schema), which of Pill 0's two failure modes does that fix?",
+    options: [
+      "Both, a good schema eliminates all hallucination",
+      "Neither, schema context has no effect on hallucination rates",
+      "Only the visible one, wrong table/column names. It does nothing about a model that decides to answer with a plausible number instead of writing a query at all, that needs a different, separate fix",
+      "Only the silent one, since the model will always trust a schema when given one"
+    ],
+    correct: 2,
+    explanation: "Giving the model a schema removes the ambiguity that produces wrong table/column names, that's a real, direct fix. It does nothing to stop a model that's willing to skip querying entirely and answer from its own 'plausible knowledge' instead, a model doing that with a perfect schema in front of it is still doing it. That second problem needs something that actively forces querying and actively checks the result, which the rest of this series builds."
+  },
+  {
+    question: "Why does this project treat a model's refusal (\"I don't have enough context to answer that\") as a feature rather than a failure?",
+    options: [
+      "Refusals are annoying but unavoidable, so they're tolerated",
+      "A model that always produces an answer, even with nothing to go on, is a bigger risk than one willing to say it doesn't know, an always-confident model is exactly what produces undetectable wrong numbers",
+      "Refusals are only acceptable during testing, not in production",
+      "Refusals indicate a bug in the prompt that should always be fixed"
+    ],
+    correct: 1,
+    explanation: "If your agent never says 'I don't know,' that's a warning sign, not a strength, it means it's always willing to produce something, whether or not it actually has grounds to. An honest refusal is the safe failure mode: it costs a follow-up question. A confident, ungrounded answer costs nothing to produce and everything if someone acts on it."
+  }
+];
+---
+
+<BaseLayout
+  title="Quiz: Zero Context & Hallucination | Semantic Layer Pill 0"
+  description="Test your understanding of LLM hallucination modes, SQL safety validators, and why giving a model your schema only solves half the problem."
+>
+  <section class="pill-quiz-page">
+    <div class="container">
+      <a href="/blog/semantic-layer-pill-0-zero-context" class="back-link">&larr; Back to Pill 0</a>
+
+      <div class="pill-header">
+        <div class="badge badge-series" style="margin-bottom: 0.5rem;">Pill 0 · Zero Context</div>
+        <h1>Quiz: What Zero Context Actually Breaks</h1>
+        <p class="pill-lead">
+          These questions test whether you understood the reasoning behind the two failure
+          modes and the safety guardrail, not just whether you remember the "70%" story.
+        </p>
+      </div>
+
+      <Quiz
+        title="Pill 0: Zero Context & Hallucination"
+        questions={questions}
+      />
+
+      <div class="pill-footer glass-card">
+        <h3>How did it go?</h3>
+        <p>
+          If you scored below 70%, re-read <strong>Pill 0</strong> and, if you can, actually
+          run the demo yourself against your own copy of the database. Seeing a real Postgres
+          error land in your own terminal makes the visible-vs-silent distinction click faster
+          than reading about it.
+        </p>
+        <div class="pill-footer-links">
+          <a href="/blog/semantic-layer-pill-0-zero-context" class="btn btn-secondary btn-sm">Re-read Pill 0</a>
+          <a href="/pills/semantic-layer-quiz-1" class="btn btn-primary btn-sm">Next: Pill 1 Quiz &mdash; Column Descriptions</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .pill-quiz-page {
+    padding: 3.5rem 0 5rem;
+  }
+
+  .back-link {
+    display: inline-block;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.8rem;
+    transition: color 0.2s ease;
+  }
+  .back-link:hover {
+    color: var(--accent-blue);
+  }
+
+  .badge-series {
+    background: var(--accent-blue);
+    color: #ffffff;
+  }
+
+  .pill-header {
+    max-width: 720px;
+    margin-bottom: 2rem;
+  }
+
+  .pill-header h1 {
+    font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+    margin-bottom: 0.8rem;
+    line-height: 1.3;
+  }
+
+  .pill-lead {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+    max-width: 640px;
+  }
+
+  .pill-footer {
+    margin-top: 2.5rem;
+    padding: 2rem;
+    background: var(--bg-card);
+  }
+
+  .pill-footer h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-main);
+  }
+
+  .pill-footer p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.7;
+    margin-bottom: 1.1rem;
+    max-width: 600px;
+  }
+
+  .pill-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+</style>

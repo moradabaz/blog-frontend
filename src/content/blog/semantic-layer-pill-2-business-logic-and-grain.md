@@ -108,6 +108,8 @@ Go deeper in [01-dbt-semantic-layer-governance.md](https://github.com/moradabaz/
 
 ---
 
+> **Test yourself: [Pill 2 Quiz: Governance vs. Coverage](/pills/semantic-layer-quiz-2)**
+>
 > **Next up: [Pill 3: Routing — Giving the Model Only What the Question Needs](/blog/semantic-layer-pill-3-routing)**
 >
 > **Series: Semantic Layer Pills.** Source project: [pms-semantic-layer](https://github.com/moradabaz/pms-semantic-layer) · Full write-ups: [semantic-layer-pills](https://github.com/moradabaz/semantic-layer-pills).
