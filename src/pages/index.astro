@@ -7,10 +7,11 @@ import { fetchMediumPosts } from '../lib/medium';
 import { getCollection } from 'astro:content';
 
 const mediumPosts = await fetchMediumPosts();
-const localPosts = await getCollection('blog', ({ data }) => data.category !== 'Spark Pills');
+const localPosts = await getCollection('blog', ({ data }) => data.category !== 'Spark Pills' && data.category !== 'Semantic Layer Pills');
 const sortedLocalPosts = localPosts.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 
 const sparkPillsCount = (await getCollection('blog', ({ data }) => data.category === 'Spark Pills')).length;
+const semanticLayerPillsCount = (await getCollection('blog', ({ data }) => data.category === 'Semantic Layer Pills')).length;
 ---
 
 <BaseLayout>
@@ -83,7 +84,13 @@ const sparkPillsCount = (await getCollection('blog', ({ data }) => data.category
           count={sparkPillsCount}
           href="/blog/spark-pills"
         />
-        {sortedLocalPosts.slice(0, 2).map(post => (
+        <SeriesCard
+          title="Semantic Layer Pills"
+          description="How much context does an LLM actually need to answer SQL questions correctly? A series built from a real dbt project and database: zero context, column descriptions, business logic, routing, and access control."
+          count={semanticLayerPillsCount}
+          href="/blog/semantic-layer-pills"
+        />
+        {sortedLocalPosts.slice(0, 1).map(post => (
           <BlogCard post={post} />
         ))}
       </div>

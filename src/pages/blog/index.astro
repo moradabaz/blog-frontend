@@ -4,10 +4,11 @@ import BlogCard from '../../components/BlogCard.astro';
 import SeriesCard from '../../components/SeriesCard.astro';
 import { getCollection } from 'astro:content';
 
-const posts = await getCollection('blog', ({ data }) => data.category !== 'Spark Pills');
+const posts = await getCollection('blog', ({ data }) => data.category !== 'Spark Pills' && data.category !== 'Semantic Layer Pills');
 const sortedPosts = posts.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 
 const sparkPillsCount = (await getCollection('blog', ({ data }) => data.category === 'Spark Pills')).length;
+const semanticLayerPillsCount = (await getCollection('blog', ({ data }) => data.category === 'Semantic Layer Pills')).length;
 
 // Collect all unique tags across all posts
 const allTags = ['All', ...Array.from(new Set(sortedPosts.flatMap(p => p.data.tags))).sort()];
@@ -58,6 +59,14 @@ const postsData = sortedPosts.map(p => ({
           description="A series for data engineers who can run PySpark jobs but want to understand what happens underneath: MapReduce, the DAG, shuffle, joins, skew, caching, the Spark UI, Iceberg, and streaming."
           count={sparkPillsCount}
           href="/blog/spark-pills"
+        />
+      </div>
+      <div class="card-wrapper" data-tags={JSON.stringify(['Semantic Layer'])}>
+        <SeriesCard
+          title="Semantic Layer Pills"
+          description="How much context does an LLM actually need to answer SQL questions correctly? A series built from a real dbt project and database: zero context, column descriptions, business logic, routing, and access control."
+          count={semanticLayerPillsCount}
+          href="/blog/semantic-layer-pills"
         />
       </div>
       {sortedPosts.map(post => (
