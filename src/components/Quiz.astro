@@ -140,8 +140,12 @@ const quizId = `quiz-${Math.random().toString(36).slice(2, 9)}`;
         optionsEl.appendChild(btn);
       });
 
-      // Hide feedback & buttons
+      // Hide feedback & buttons, and reset feedback content so stale
+      // text/color from the previous question can't flash before it's hidden
       feedbackEl.hidden = true;
+      feedbackEl.className = 'quiz-feedback';
+      feedbackIcon.textContent = '';
+      feedbackText.textContent = '';
       nextBtn.hidden = true;
       resetBtn.hidden = true;
       body.hidden = false;
@@ -396,6 +400,12 @@ const quizId = `quiz-${Math.random().toString(36).slice(2, 9)}`;
     align-items: flex-start;
     gap: 0.7rem;
     line-height: 1.6;
+  }
+
+  /* Higher specificity than `.quiz-feedback` so the hidden attribute
+     actually hides it instead of being overridden by display: flex above */
+  .quiz-feedback[hidden] {
+    display: none;
   }
 
   .quiz-feedback-icon {

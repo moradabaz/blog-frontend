@@ -24,20 +24,12 @@ If one of your tables is small enough to fit in each executor's memory, Spark ca
 3. Each executor builds a **HashMap** from M in its local memory
 4. For each row of the big table N, the executor does an O(1) lookup in the HashMap
 
-```
-┌──────────────────────────────────────────────────────┐
-│                     DRIVER                            │
-│       Collects small table M (e.g. 5,000 rows)       │
-│       Broadcasts M to all executors                   │
-└────────┬────────────────┬────────────────┬───────────┘
-         │  full copy of M │  full copy of M │
-    ┌────▼────┐      ┌────▼────┐      ┌────▼────┐
-    │Executor1│      │Executor2│      │Executor3│
-    │HashMap M│      │HashMap M│      │HashMap M│
-    │Scan N   │      │Scan N   │      │Scan N   │
-    │partitions      │partitions      │partitions
-    │1,2,3    │      │4,5,6    │      │7,8,9    │
-    └─────────┘      └─────────┘      └─────────┘
+```mermaid
+flowchart TD
+    Driver["<b>Driver</b><br/>Collects small table M (e.g. 5,000 rows)<br/>Broadcasts M to all executors"]
+    Driver -- "full copy of M" --> E1["Executor 1<br/>HashMap M<br/>Scan N partitions 1,2,3"]
+    Driver -- "full copy of M" --> E2["Executor 2<br/>HashMap M<br/>Scan N partitions 4,5,6"]
+    Driver -- "full copy of M" --> E3["Executor 3<br/>HashMap M<br/>Scan N partitions 7,8,9"]
 ```
 
 **Total cost: O(N + M).** No shuffle, no sort, no network transfer for the big table. Each executor reads its local partitions of N and looks up keys instantly.
@@ -62,25 +54,12 @@ When both tables are large, broadcasting is not an option. Spark falls back to S
 2. **Sort** each partition locally by the join key
 3. **Merge** the two sorted streams: walk through both sides simultaneously, matching keys as you go
 
-```
-Table A                              Table B
-┌─────────┐                         ┌─────────┐
-│ Shuffle  │                         │ Shuffle  │
-│ by key   │                         │ by key   │
-└────┬─────┘                         └────┬─────┘
-     │                                    │
-     ▼                                    ▼
-┌─────────────────────────────────────────────┐
-│              Executor 1                      │
-│  A partitions (key hash = 0) sorted          │
-│  B partitions (key hash = 0) sorted          │
-│  Merge: walk both sides, emit matches        │
-├─────────────────────────────────────────────┤
-│              Executor 2                      │
-│  A partitions (key hash = 1) sorted          │
-│  B partitions (key hash = 1) sorted          │
-│  Merge: walk both sides, emit matches        │
-└─────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    A["Table A"] -- "shuffle by key" --> S1["Executor 1<br/>A (hash=0) sorted<br/>B (hash=0) sorted<br/>Merge: emit matches"]
+    B["Table B"] -- "shuffle by key" --> S1
+    A -- "shuffle by key" --> S2["Executor 2<br/>A (hash=1) sorted<br/>B (hash=1) sorted<br/>Merge: emit matches"]
+    B -- "shuffle by key" --> S2
 ```
 
 **Total cost: O(N log N + M log M)** for the sort, plus the full shuffle of both tables across the network.

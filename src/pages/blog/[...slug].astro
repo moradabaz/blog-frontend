@@ -116,6 +116,36 @@ const formattedDate = post.data.pubDate.toLocaleDateString('en-US', {
 
     headingEls.forEach(el => observer.observe(el));
   }
+
+  const mermaidBlocks = document.querySelectorAll<HTMLPreElement>('pre[data-language="mermaid"]');
+  if (mermaidBlocks.length) {
+    import('mermaid').then(({ default: mermaid }) => {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: 'neutral',
+        themeVariables: {
+          fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+          primaryColor: '#e0f2fe',
+          primaryBorderColor: '#0284c7',
+          primaryTextColor: '#0f172a',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#ffffff'
+        }
+      });
+
+      mermaidBlocks.forEach((pre, i) => {
+        const code = pre.querySelector('code')?.textContent ?? '';
+        const container = document.createElement('div');
+        container.className = 'mermaid-diagram';
+        container.id = `mermaid-diagram-${i}`;
+        container.textContent = code;
+        pre.replaceWith(container);
+      });
+
+      mermaid.run({ querySelector: '.mermaid-diagram' });
+    });
+  }
 </script>
 
 <style>
@@ -193,6 +223,22 @@ const formattedDate = post.data.pubDate.toLocaleDateString('en-US', {
     max-width: 860px;
     margin: 0 auto;
     padding: 3rem;
+  }
+
+  .article-body :global(.mermaid-diagram) {
+    display: flex;
+    justify-content: center;
+    overflow-x: auto;
+    margin: 1.75rem 0;
+    padding: 1.25rem 0.5rem;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+  }
+
+  .article-body :global(.mermaid-diagram svg) {
+    max-width: 100%;
+    height: auto;
   }
 
   /* Desktop sidebar TOC */

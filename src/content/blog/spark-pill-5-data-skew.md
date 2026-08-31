@@ -27,12 +27,14 @@ Hash('IT') % 40 = 33
 
 If Spain represents 70% of your transactions, then 70% of all data goes to partition 6, assigned to a single executor. The other 39 partitions share the remaining 30%.
 
-```
-Partition  6 (ES): ████████████████████████████████████ 70%
-Partition 12 (FR): ████ 8%
-Partition 27 (DE): ███ 6%
-Partition 33 (IT): ███ 5%
-Partitions 0-39:   ██ remaining 11% spread across 36 partitions
+```mermaid
+pie showData
+    title Rows per partition (40 partitions total)
+    "Partition 6 (ES)" : 70
+    "Partition 12 (FR)" : 8
+    "Partition 27 (DE)" : 6
+    "Partition 33 (IT)" : 5
+    "Remaining 36 partitions" : 11
 ```
 
 One core does 70% of the work. The other 39 cores finish quickly and sit idle, waiting.
@@ -57,20 +59,12 @@ As the executor's JVM heap fills with the oversized partition's data, the garbag
 
 The frozen executor stops sending heartbeats to the Driver. After the timeout threshold (default: 120 seconds), the Driver declares the executor dead and cancels the stage. If retries are configured, Spark reassigns the task, but the same skewed partition goes to another executor, which hits the same cascade.
 
-```
-Skewed partition too large
-     │
-     ▼
-Memory fills → Spill to disk (slow)
-     │
-     ▼
-JVM heap pressure → GC storms (Stop-The-World)
-     │
-     ▼
-Executor unresponsive → Heartbeat timeout
-     │
-     ▼
-Driver kills executor → Stage fails
+```mermaid
+flowchart TD
+    A["Skewed partition too large"] --> B["Memory fills → spill to disk (slow)"]
+    B --> C["JVM heap pressure → GC storms (Stop-The-World)"]
+    C --> D["Executor unresponsive → heartbeat timeout"]
+    D --> E["Driver kills executor → stage fails"]
 ```
 
 ## How to detect skew in the Spark UI

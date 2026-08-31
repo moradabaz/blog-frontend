@@ -24,17 +24,9 @@ grouped = selected.groupBy("country").agg(sum("revenue"))          # Plan: add a
 
 At this point, Spark has built a **Directed Acyclic Graph (DAG)**: a complete map of every operation you want to perform, connected in order, with no cycles. It looks like this:
 
-```
- Read CSV
-    │
-    ▼
- Filter (revenue > 1000)
-    │
-    ▼
- Select (country, revenue)
-    │
-    ▼
- GroupBy (country) + Sum (revenue)
+```mermaid
+flowchart TD
+    A["Read CSV"] --> B["Filter (revenue > 1000)"] --> C["Select (country, revenue)"] --> D["GroupBy (country) + Sum (revenue)"]
 ```
 
 No data has moved. No file has been opened. The DAG is just a data structure in the Driver's memory.
@@ -74,23 +66,16 @@ Your code says: read the file, then filter rows where revenue > 1000.
 
 Catalyst rewrites this to: read the file, but skip rows where revenue <= 1000 during the read itself. The filter moves down to the data source. For columnar formats like Parquet, this can skip entire row groups without reading them, saving enormous amounts of disk I/O.
 
-```
- YOUR PLAN                    OPTIMIZED PLAN
- ┌──────────┐                 ┌──────────────────────┐
- │ Read CSV │                 │ Read CSV             │
- └────┬─────┘                 │ + Filter: rev > 1000 │
-      │                       │ + Project: country,  │
- ┌────▼──────────────┐        │            revenue   │
- │ Filter: rev > 1000│        └──────────┬───────────┘
- └────┬──────────────┘                   │
-      │                       ┌──────────▼───────────┐
- ┌────▼──────────────────┐    │ GroupBy + Sum         │
- │ Select: country, rev  │    └──────────────────────┘
- └────┬──────────────────┘
-      │
- ┌────▼──────────────────┐
- │ GroupBy + Sum          │
- └───────────────────────┘
+```mermaid
+flowchart LR
+    subgraph Before["Your plan"]
+        direction TB
+        A1["Read CSV"] --> B1["Filter: rev > 1000"] --> C1["Select: country, rev"] --> D1["GroupBy + Sum"]
+    end
+    subgraph After["Optimized plan"]
+        direction TB
+        A2["Read CSV<br/>+ Filter: rev > 1000<br/>+ Project: country, revenue"] --> D2["GroupBy + Sum"]
+    end
 ```
 
 Two fewer stages. Less data read from disk. Same result.
@@ -197,14 +182,15 @@ result = grouped.filter(col("sum(amount)") > 100)  # Narrow
 
 Spark creates two stages:
 
-```
- STAGE 1 (before the shuffle)          STAGE 2 (after the shuffle)
- ┌─────────────────────────────┐       ┌─────────────────────────────┐
- │ Read Parquet                │       │ Aggregate partial sums      │
- │ Filter: event_type=purchase │       │ Filter: sum(amount) > 100   │
- │ Select: user_id, amount     │ ────> │                             │
- │ Partial aggregation         │shuffle│                             │
- └─────────────────────────────┘       └─────────────────────────────┘
+```mermaid
+flowchart LR
+    subgraph S1["Stage 1 (before the shuffle)"]
+        A["Read Parquet"] --> B["Filter: event_type = purchase"] --> C["Select: user_id, amount"] --> D["Partial aggregation"]
+    end
+    subgraph S2["Stage 2 (after the shuffle)"]
+        E["Aggregate partial sums"] --> F["Filter: sum(amount) > 100"]
+    end
+    D -- shuffle --> E
 ```
 
 Stage 1 runs entirely locally on each executor. All the narrow transformations are fused together. At the end of Stage 1, Spark also performs a **partial aggregation**: each executor sums the amounts per user_id for its local partitions. This reduces the amount of data that needs to cross the network during the shuffle.

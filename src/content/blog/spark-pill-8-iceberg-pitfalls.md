@@ -19,6 +19,17 @@ Every time you write to an Iceberg table, Iceberg creates a new **snapshot**. A 
 
 Here is the part that surprises people: **Iceberg does NOT automatically delete old snapshots.** Every `INSERT`, `MERGE`, `DELETE`, and `OVERWRITE` adds a new snapshot, and the old ones stay.
 
+```mermaid
+flowchart LR
+    S1["Snapshot 1<br/>(INSERT)"] --> S2["Snapshot 2<br/>(MERGE)"] --> S3["Snapshot 3<br/>(DELETE)"] --> S4["Snapshot 4<br/>(OVERWRITE)"] --> S5["... 356 more snapshots after 3 months"]
+    S1 -.-> M1[("manifest files")]
+    S2 -.-> M2[("manifest files")]
+    S3 -.-> M3[("manifest files")]
+    S4 -.-> M4[("manifest files")]
+```
+
+Each box in the chain is a snapshot the Driver has to load into memory just to open the table, and each one points to its own set of manifest files. Nothing here ever gets removed on its own.
+
 After three months of daily operations (say, 4 writes per day), you have around 360 snapshots, each referencing its own manifest list and manifest files. The metadata directory grows to hundreds of megabytes.
 
 When Spark opens the table, the **Driver** loads all this metadata into its heap. The Driver is typically configured with 4 to 8 GB of RAM. Once the metadata exceeds what fits in that heap, you get an OutOfMemory error before Spark processes a single row of actual data.
@@ -44,6 +55,11 @@ When Iceberg writes data into partitioned tables, it uses one of two strategies:
 **FanoutWriter** (`fanout-enabled = true`): Keeps N file writers open simultaneously, one per partition. Rows can arrive in any order. If your table has 365 daily partitions and a write touches all of them, FanoutWriter opens 365 writers at once. This costs RAM: each writer holds a buffer.
 
 **ClusteredWriter** (`fanout-enabled = false`, the default): Keeps only one writer active at a time. It writes all rows for partition A, closes that writer, opens a new writer for partition B, and so on. Much lower memory cost. But there is a strict requirement: **the data must arrive sorted by partition column.**
+
+```mermaid
+flowchart LR
+    A["Rows for 2026-01<br/>arrive first"] --> B["Open writer for 2026-01<br/>write all its rows"] --> C["Close writer for 2026-01"] --> D["Rows for 2026-03<br/>arrive next"] --> E["Open writer for 2026-03"]
+```
 
 If ClusteredWriter receives a row for partition "2026-01" after it has already closed partition "2026-01" and moved on to "2026-03", it throws an `IllegalStateException`.
 

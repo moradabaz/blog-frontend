@@ -17,18 +17,17 @@ Until the day a job that used to take 8 minutes now takes 55 minutes, and someon
 
 Every Spark application has one UI, usually at port 4040. The structure follows the execution model we covered in earlier pills:
 
-```
-Application
-  └── Job 1           (triggered by one action: .write(), .count(), .show())
-  │     ├── Stage 0   (a block of transformations with no shuffle between them)
-  │     │     ├── Task 0  (one partition processed by one core)
-  │     │     ├── Task 1
-  │     │     └── Task 2
-  │     └── Stage 1
-  │           ├── Task 0
-  │           └── Task 1
-  └── Job 2
-        └── ...
+```mermaid
+flowchart TD
+    App["Application"] --> J1["Job 1 (one action: .write / .count / .show)"]
+    App --> J2["Job 2"]
+    J1 --> S0["Stage 0 (transformations with no shuffle between them)"]
+    J1 --> S1["Stage 1"]
+    S0 --> T0["Task 0 (one partition, one core)"]
+    S0 --> T1["Task 1"]
+    S0 --> T2["Task 2"]
+    S1 --> T3["Task 0"]
+    S1 --> T4["Task 1"]
 ```
 
 **Job** = one action. Every time you call `.write()`, `.count()`, `.collect()`, or `.show()`, Spark creates a job.
@@ -43,15 +42,15 @@ In the Spark UI, click on a job and you will see the DAG visualization. It looks
 
 The key insight: **every boundary between stages is a shuffle** (labeled as "Exchange" in the physical plan). When you see the DAG split into Stage 0 and Stage 1, data moved across the network between them.
 
-```
-┌──────────────────┐      ┌──────────────────┐
-│     Stage 0      │      │     Stage 1      │
-│                  │      │                  │
-│  Scan Parquet    │      │  HashAggregate   │
-│  Filter          │ ───► │  (final combine) │
-│  Partial Agg     │      │                  │
-│                  │ Exchange (shuffle)       │
-└──────────────────┘      └──────────────────┘
+```mermaid
+flowchart LR
+    subgraph S0["Stage 0"]
+        A["Scan Parquet"] --> B["Filter"] --> C["Partial Agg"]
+    end
+    subgraph S1["Stage 1"]
+        D["HashAggregate (final combine)"]
+    end
+    C -- "Exchange (shuffle)" --> D
 ```
 
 If you count the exchanges, you know how many times your data crosses the network. Fewer exchanges generally means faster execution.

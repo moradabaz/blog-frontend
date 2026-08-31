@@ -92,17 +92,25 @@ Yahoo took these ideas and built **Hadoop**, the open-source implementation that
 
 Hadoop worked, but it had one big limitation: **every Map-Reduce step wrote its output to HDFS (disk) before the next step could read it.**
 
-A pipeline with 5 transformations looked like this:
+A pipeline with 3 transformations looked like this:
 
-```
-Read -> Map -> Reduce -> Write to disk
-Read from disk -> Map -> Reduce -> Write to disk
-Read from disk -> Map -> Reduce -> Write to disk
-Read from disk -> Map -> Reduce -> Write to disk
-Read from disk -> Map -> Reduce -> Write to disk -> Final output
+```mermaid
+flowchart LR
+    subgraph Step1["Job 1"]
+        A1[Read] --> B1[Map] --> C1[Reduce]
+    end
+    subgraph Step2["Job 2"]
+        A2[Read] --> B2[Map] --> C2[Reduce]
+    end
+    subgraph Step3["Job 3"]
+        A3[Read] --> B3[Map] --> C3[Reduce]
+    end
+    C1 --> D1[("Write to HDFS")] --> A2
+    C2 --> D2[("Write to HDFS")] --> A3
+    C3 --> D3[("Write to HDFS")] --> E["Final output"]
 ```
 
-Five writes and five reads to disk per pipeline. On the HDDs of that era, this was extremely slow. Jobs that could take 10 minutes ended up taking hours.
+Every single job in the chain reads its input from disk and writes its output back to disk, even though that output only exists to feed the very next job. Five chained transformations means five full round trips to disk. On the HDDs of that era, this was extremely slow. Jobs that could take 10 minutes ended up taking hours.
 
 ### 2009 to 2012: Spark
 
@@ -111,6 +119,13 @@ Matei Zaharia, a PhD student at UC Berkeley, noticed the bottleneck: those inter
 His key insight, published in the 2012 RDD paper (*Resilient Distributed Datasets*): you can keep data in memory between operations and still make it fault-tolerant, without writing to disk. How? By remembering the recipe (the sequence of transformations) instead of the result. If a machine dies and its in-memory data is lost, Spark recomputes just that partition by replaying the transformations from the source data.
 
 What Hadoop did in hours, Spark could do in minutes. The reason is straightforward: it removed the unnecessary disk I/O between steps.
+
+```mermaid
+flowchart LR
+    A[Read] --> B[Map] --> C[Reduce] --> D[Map] --> E[Reduce] --> F[Map] --> G[Reduce] --> H[("Write final output")]
+```
+
+Same three transformations as the Hadoop diagram above, but chained entirely in memory. Disk is only touched once, at the very end, to write the result. That is the entire improvement in one picture.
 
 ## The three actors in a Spark job
 
@@ -142,17 +157,12 @@ The data chunks. Your 80GB file gets split into around 625 partitions of 128MB e
 
 Here is the mental model:
 
-```
-┌─────────────────────────────────────────────────────┐
-│                    DRIVER                            │
-│  Your code -> DAG -> Catalyst -> Physical Plan       │
-└──────────┬──────────────┬──────────────┬────────────┘
-           │              │              │
-     ┌─────▼─────┐ ┌─────▼─────┐ ┌─────▼─────┐
-     │ Executor 1 │ │ Executor 2 │ │ Executor 3 │
-     │ Task: P1   │ │ Task: P3   │ │ Task: P5   │
-     │ Task: P2   │ │ Task: P4   │ │ Task: P6   │
-     └───────────┘ └───────────┘ └───────────┘
+```mermaid
+flowchart TD
+    Driver["<b>Driver</b><br/>Your code → DAG → Catalyst → Physical Plan"]
+    Driver --> E1["<b>Executor 1</b><br/>Task: P1<br/>Task: P2"]
+    Driver --> E2["<b>Executor 2</b><br/>Task: P3<br/>Task: P4"]
+    Driver --> E3["<b>Executor 3</b><br/>Task: P5<br/>Task: P6"]
 ```
 
 Each executor picks up partitions and processes them. When it finishes one, it grabs the next. The Driver tracks progress and handles failures.

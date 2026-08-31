@@ -27,20 +27,11 @@ This happens on the Driver, in a single thread, before any executor touches any 
 
 The physical plan gets split into tasks and distributed to executors. This is where the actual data processing happens: reading partitions, applying filters, shuffling, joining, aggregating.
 
-```
-┌─────────────────────────────────────────────────┐
-│  LAYER 1: Driver (single-threaded)               │
-│  Your code → Logical Plan → Catalyst Optimizer   │
-│  → Physical Plan                                  │
-│  Cost: proportional to plan TREE SIZE             │
-└───────────────────┬─────────────────────────────┘
-                    │ tasks
-                    ▼
-┌─────────────────────────────────────────────────┐
-│  LAYER 2: Executors (parallel)                    │
-│  Read partitions → Transform → Shuffle → Write   │
-│  Cost: proportional to DATA SIZE                  │
-└─────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    L1["<b>LAYER 1: Driver (single-threaded)</b><br/>Your code → Logical Plan → Catalyst Optimizer → Physical Plan<br/><i>Cost: proportional to plan TREE SIZE</i>"]
+    L2["<b>LAYER 2: Executors (parallel)</b><br/>Read partitions → Transform → Shuffle → Write<br/><i>Cost: proportional to DATA SIZE</i>"]
+    L1 -- tasks --> L2
 ```
 
 Most performance tuning focuses on Layer 2: partition counts, shuffle optimization, broadcast joins. But sometimes Layer 1 is the bottleneck, and that is where the lineage trap hides.

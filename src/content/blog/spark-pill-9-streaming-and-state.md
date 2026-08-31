@@ -29,9 +29,18 @@ All of these need **state**: the ability to remember what happened in previous e
 
 Lambda cannot do this on its own. Each invocation starts fresh. To keep state, you must query an external database:
 
-```
-Event arrives → Lambda starts → Read current count from DynamoDB
-→ Increment → Write new count to DynamoDB → Lambda terminates
+```mermaid
+sequenceDiagram
+    participant E as Event
+    participant L as Lambda
+    participant D as DynamoDB
+
+    E->>L: triggers invocation
+    L->>D: read current count
+    D-->>L: current count
+    L->>L: increment
+    L->>D: write new count
+    Note over L: Lambda terminates, all local state gone
 ```
 
 At 10,000 events per second, this means 10,000 reads and 10,000 writes per second to DynamoDB. You are now bottlenecked by the database. DynamoDB can handle this with enough provisioned capacity, but the cost scales linearly with throughput, and the latency of each event now includes two network round-trips to the database.
@@ -46,10 +55,19 @@ Flink uses an embedded key-value store called RocksDB, which runs inside the sam
 
 The flow looks like this:
 
-```
-Event arrives → Flink operator reads state from local RocksDB
-→ Updates the running total → Writes state back to local RocksDB
-→ When window closes → ONE write to the destination
+```mermaid
+sequenceDiagram
+    participant E as Event
+    participant F as Flink operator
+    participant R as Local RocksDB
+    participant Dest as Destination
+
+    E->>F: triggers processing
+    F->>R: read running total
+    R-->>F: running total
+    F->>R: write updated total
+    Note over F,R: repeats locally for every event, no network call
+    F->>Dest: ONE write, only when the window closes
 ```
 
 During a 1-hour window with 100,000 events per second, Flink processes 360 million events. For each event, it reads and writes to local storage (microseconds, not milliseconds). When the window closes, it makes **one** write to the destination with the final result.
@@ -164,26 +182,15 @@ The right choice when you need stateful processing: windowed aggregations, sessi
 
 Spark's streaming module processes data in micro-batches (small batch jobs triggered every few seconds). It supports windowed aggregations and maintains state between micro-batches. It is a good fit for teams already invested in Spark who need near-real-time (latency of seconds, not milliseconds) without adopting Flink.
 
-```
-                        ┌─────────────┐
-                        │   Kafka /   │
-                        │   Kinesis   │
-                        └──────┬──────┘
-                               │
-              ┌────────────────┼────────────────┐
-              │                │                │
-        ┌─────▼─────┐   ┌─────▼─────┐   ┌─────▼──────┐
-        │  Lambda    │   │   Flink   │   │  Spark SS  │
-        │            │   │           │   │            │
-        │ Stateless  │   │ Stateful  │   │ Micro-batch│
-        │ Per-event  │   │ Local     │   │ State      │
-        │ transform  │   │ RocksDB   │   │ between    │
-        │            │   │ Watermarks│   │ batches    │
-        └─────┬─────┘   └─────┬─────┘   └─────┬──────┘
-              │                │                │
-              ▼                ▼                ▼
-           S3/Lake       DB/Stream/Lake     DB/Lake
-        (batch ingest)  (real streaming)  (near real-time)
+```mermaid
+flowchart TD
+    Source["Kafka / Kinesis"]
+    Source --> Lambda["<b>Lambda</b><br/>Stateless<br/>Per-event transform"]
+    Source --> Flink["<b>Flink</b><br/>Stateful<br/>Local RocksDB + Watermarks"]
+    Source --> SparkSS["<b>Spark Structured Streaming</b><br/>Micro-batch<br/>State between batches"]
+    Lambda --> S3["S3 / Lake<br/>(batch ingest)"]
+    Flink --> Real["DB / Stream / Lake<br/>(real streaming)"]
+    SparkSS --> Near["DB / Lake<br/>(near real-time)"]
 ```
 
 The decision is straightforward:

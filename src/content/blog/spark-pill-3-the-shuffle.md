@@ -62,19 +62,23 @@ Now the reducer phase begins. Each reducer is responsible for one output partiti
 
 Reducer 0 opens TCP connections to Executor 1, Executor 2, and Executor 3. It sends a request: "Give me the data for Partition 0." Each mapper reads the relevant section of its shuffle file (using the index to find the right offset) and sends the bytes over the network.
 
-```
- Executor 1 ──── Partition 0 bytes ────> Reducer 0 (gets all Spain + Italy)
- Executor 2 ──── Partition 0 bytes ────> Reducer 0
- Executor 3 ──── Partition 0 bytes ────> Reducer 0
+```mermaid
+sequenceDiagram
+    participant Ex1 as Executor 1
+    participant Ex2 as Executor 2
+    participant Ex3 as Executor 3
+    participant R0 as Reducer 0
 
- Executor 1 ──── Partition 1 bytes ────> Reducer 1 (gets all France)
- Executor 2 ──── Partition 1 bytes ────> Reducer 1
- Executor 3 ──── Partition 1 bytes ────> Reducer 1
-
- Executor 1 ──── Partition 2 bytes ────> Reducer 2 (gets all Germany)
- Executor 2 ──── Partition 2 bytes ────> Reducer 2
- Executor 3 ──── Partition 2 bytes ────> Reducer 2
+    R0->>Ex1: request Partition 0
+    R0->>Ex2: request Partition 0
+    R0->>Ex3: request Partition 0
+    Ex1-->>R0: Spain rows
+    Ex2-->>R0: Spain + Italy rows
+    Ex3-->>R0: Spain rows
+    Note over R0: Now holds ALL Spain + Italy rows
 ```
+
+The same pattern repeats for Reducer 1 (which pulls every mapper's Partition 1 data, all the France rows) and Reducer 2 (Partition 2, all the Germany rows). Every reducer talks to every mapper.
 
 ### Step 4: Reducers deserialize and combine
 
@@ -148,21 +152,16 @@ Now Spark has a problem. The reducers assigned to pull from Executor 5 cannot ge
 **Scenario: shuffle data on local disk.**
 Same pipeline. Executor 5 crashes. But its shuffle files are on the local SSD, and the machine reboots (or another executor on the same machine can read them). More commonly in practice, if the machine is truly gone, only the shuffle output from that specific machine needs recomputation. The other 9 executors' shuffle files are safely on their local disks. The reducers can still pull from those 9 machines while only Executor 5's portion is recomputed.
 
-```
- RAM-only shuffle:                     Disk-backed shuffle:
- Node 5 dies                           Node 5 dies
-    │                                     │
-    ▼                                     ▼
- ALL shuffle data from                 Only Node 5's shuffle data
- Node 5 is LOST                        needs recomputation
-    │                                     │
-    ▼                                     ▼
- Re-execute ENTIRE Stage 1             Re-execute Stage 1 ONLY
- for Node 5's partitions               for Node 5's partitions
-    │                                     │
-    ▼                                     ▼
- Other nodes' shuffle data             Other nodes' shuffle data
- also potentially at risk              is SAFE on their local disks
+```mermaid
+flowchart LR
+    subgraph RAM["RAM-only shuffle"]
+        direction TB
+        R1["Node 5 dies"] --> R2["ALL shuffle data from Node 5 is LOST"] --> R3["Re-execute Stage 1 for Node 5's partitions"] --> R4["Other nodes' shuffle data also potentially at risk"]
+    end
+    subgraph DISK["Disk-backed shuffle"]
+        direction TB
+        D1["Node 5 dies"] --> D2["Only Node 5's shuffle data needs recomputation"] --> D3["Re-execute Stage 1 ONLY for Node 5's partitions"] --> D4["Other nodes' shuffle data is SAFE on local disk"]
+    end
 ```
 
 Spark accepts the latency cost of disk writes during the shuffle to gain fault tolerance. RAM is fast but volatile. Disk is slower but persistent. In a production cluster running jobs that take hours, a single node failure without disk-backed shuffle could cascade into re-executing an enormous amount of work.
@@ -173,30 +172,11 @@ Even during narrow transformations, Spark may write to disk. This happens when a
 
 For example, during a sort-based aggregation, the executor builds an in-memory hash map of partial aggregates. If the hash map grows larger than the executor's available memory, Spark **spills** it to local disk: it writes the current hash map contents to a sorted file, frees the memory, and continues building a new hash map. At the end, it merges the in-memory hash map with the spilled files on disk.
 
-```
- Executor memory during aggregation:
- ┌────────────────────────────────────┐
- │ Hash map: {Spain: 5000, France:   │  Memory full.
- │ 3200, Germany: 4100, Italy: ...}  │  Spill to disk.
- └────────────┬───────────────────────┘
-              │ write sorted records
-              ▼
- ┌────────────────────────────────────┐
- │ Local SSD: spill_file_001         │
- │ (sorted partial aggregates)       │
- └────────────────────────────────────┘
-              │
-              │ continue processing, fill memory again
-              ▼
- ┌────────────────────────────────────┐
- │ Hash map: {new partial results}   │
- └────────────────────────────────────┘
-              │
-              │ merge in-memory + spilled files
-              ▼
- ┌────────────────────────────────────┐
- │ Final aggregation result          │
- └────────────────────────────────────┘
+```mermaid
+flowchart TD
+    A["Hash map: {Spain: 5000, France: 3200, Germany: 4100, ...}<br/>Memory full"] -- "write sorted records" --> B[("Local SSD: spill_file_001<br/>sorted partial aggregates")]
+    B -- "continue processing, fill memory again" --> C["Hash map: {new partial results}"]
+    C -- "merge in-memory + spilled files" --> D["Final aggregation result"]
 ```
 
 Spilling is a safety valve, not a failure. It means Spark handled data that did not fit in memory without crashing. But it is a performance signal. If you see heavy spill in the Spark UI, it means executors need more memory or partitions should be smaller.

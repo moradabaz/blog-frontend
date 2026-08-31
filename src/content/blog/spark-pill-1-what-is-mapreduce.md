@@ -17,12 +17,11 @@ Every distributed computation in Spark follows a three-phase pattern that Google
 
 Here is the simplest analogy. Imagine three friends each have a box of mixed Lego bricks: red, blue, and yellow.
 
-```
- Box 1 (Ana)        Box 2 (Ben)        Box 3 Clara
- ┌──────────┐       ┌──────────┐       ┌──────────┐
- │ R B Y R  │       │ B B Y R  │       │ Y R B Y  │
- │ Y B R    │       │ R Y B    │       │ R B Y    │
- └──────────┘       └──────────┘       └──────────┘
+```mermaid
+flowchart LR
+    Ana["<b>Ana</b><br/>R B Y R Y B R"]
+    Ben["<b>Ben</b><br/>B B Y R R Y B"]
+    Clara["<b>Clara</b><br/>Y R B Y R B Y"]
 ```
 
 **Step 1, Map:** Each friend sorts their own box by color. No communication needed. Ana counts her reds, blues, and yellows. Ben does the same. Clara does the same. Each one works independently with their local data.
@@ -31,26 +30,30 @@ Here is the simplest analogy. Imagine three friends each have a box of mixed Leg
 
 **Step 3, Reduce:** Ana counts all the reds (her original reds plus the ones she received). Ben counts all the blues. Clara counts all the yellows. Done.
 
-```
- MAP (local)         SHUFFLE (network)      REDUCE (combine)
- ┌──────────┐                               ┌──────────┐
- │ Ana: R=4 │───── all R ──────────────────>│ Ana: R=10│
- │      B=3 │───── all B ──────────────┐    └──────────┘
- │      Y=2 │───── all Y ─────────┐    │    ┌──────────┐
- └──────────┘                      │    └──>│ Ben: B=9 │
- ┌──────────┐                      │         └──────────┘
- │ Ben: R=3 │───── all R ─────────┼───>Ana   ┌──────────┐
- │      B=3 │───── all B ─────────┼──>Ben    │Clara: Y=8│
- │      Y=2 │───── all Y ─────────┤          └──────────┘
- └──────────┘                      │
- ┌──────────┐                      │
- │Clara:R=3 │───── all R ─────────┼───>Ana
- │      B=3 │───── all B ─────────┼──>Ben
- │      Y=3 │───── all Y ─────────┘──>Clara
- └──────────┘
+```mermaid
+flowchart LR
+    subgraph MAP["MAP (local)"]
+        A1["Ana: R=4, B=3, Y=2"]
+        A2["Ben: R=3, B=3, Y=2"]
+        A3["Clara: R=3, B=3, Y=3"]
+    end
+    subgraph REDUCE["REDUCE (combine)"]
+        R1["Ana: R=10"]
+        R2["Ben: B=9"]
+        R3["Clara: Y=8"]
+    end
+    A1 -- "all R" --> R1
+    A2 -- "all R" --> R1
+    A3 -- "all R" --> R1
+    A1 -- "all B" --> R2
+    A2 -- "all B" --> R2
+    A3 -- "all B" --> R2
+    A1 -- "all Y" --> R3
+    A2 -- "all Y" --> R3
+    A3 -- "all Y" --> R3
 ```
 
-The Map phase is cheap: each node works locally. The Shuffle phase is expensive: data crosses the network. The Reduce phase combines what arrived.
+The middle column, where bricks cross from one friend's box to another, is the **Shuffle**. The Map phase is cheap: each node works locally. The Shuffle phase is expensive: data crosses the network. The Reduce phase combines what arrived.
 
 ## Who are the Mappers and Reducers?
 
@@ -58,18 +61,18 @@ In Hadoop, mappers and reducers were separate processes. A mapper process would 
 
 In Spark, it works differently. **Executors play both roles.** The same executor that acts as a mapper in Stage 1 can become a reducer in Stage 2, and then a mapper again in Stage 3. "Mapper" and "reducer" are not identities in Spark. They are roles within a stage.
 
-```
- Stage 1                    Stage 2
- ┌───────────────┐          ┌───────────────┐
- │ Executor 1    │          │ Executor 1    │
- │ Role: MAPPER  │ ──────>  │ Role: REDUCER │
- │ (filter,map)  │ shuffle  │ (aggregate)   │
- └───────────────┘          └───────────────┘
- ┌───────────────┐          ┌───────────────┐
- │ Executor 2    │          │ Executor 2    │
- │ Role: MAPPER  │ ──────>  │ Role: REDUCER │
- │ (filter,map)  │ shuffle  │ (aggregate)   │
- └───────────────┘          └───────────────┘
+```mermaid
+flowchart LR
+    subgraph Stage1["Stage 1"]
+        E1a["Executor 1<br/>Role: MAPPER<br/>(filter, map)"]
+        E2a["Executor 2<br/>Role: MAPPER<br/>(filter, map)"]
+    end
+    subgraph Stage2["Stage 2"]
+        E1b["Executor 1<br/>Role: REDUCER<br/>(aggregate)"]
+        E2b["Executor 2<br/>Role: REDUCER<br/>(aggregate)"]
+    end
+    E1a -- shuffle --> E1b
+    E2a -- shuffle --> E2b
 ```
 
 This is one of Spark's key advantages over Hadoop. No startup cost for new processes. The same JVM stays warm and switches roles between stages.
