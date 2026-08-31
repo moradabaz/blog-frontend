@@ -1,74 +1,103 @@
 ---
 title: "Semantic Layer Pill 3: Routing — Giving the Model Only What the Question Needs"
-description: "Dumping the whole schema into every prompt doesn't scale. This pill routes each question to only the tables it needs, and finds that fewer tables means less noise, but not automatically fewer mistakes."
+description: "Read a real routing config, run it against a live agent, then deliberately revert one function to its old, buggy version and watch a real misrouting bug come back on your own machine."
 pubDate: 2026-08-31
 author: "Morad Abaz"
 category: "Semantic Layer Pills"
 tags: ["Semantic Layer", "Analytics Engineering", "LLM", "SQL", "Data Governance"]
 ---
 
-> **This is Pill 3** of the Semantic Layer Pills series. Pills [1](/blog/semantic-layer-pill-1-column-descriptions) and [2](/blog/semantic-layer-pill-2-business-logic-and-grain) dumped the entire semantic layer into every prompt. That doesn't scale past a handful of tables, which is the actual reason routing exists.
+> **This is Pill 3** of the Semantic Layer Pills series. Same [pms-semantic-layer](https://github.com/moradabaz/pms-semantic-layer) checkout as [Pill 1](/blog/semantic-layer-pill-1-column-descriptions) and [Pill 2](/blog/semantic-layer-pill-2-business-logic-and-grain).
 
-**In this pill:**
-- [How one routing entry gets written](#how-one-routing-entry-gets-written)
-- [How the config actually gets matched](#how-the-config-actually-gets-matched)
-- [The result: a mixed bag, and every failure is a different shape](#the-result-a-mixed-bag-and-every-failure-is-a-different-shape)
-- [What routing changed, and what it didn't](#what-routing-changed-and-what-it-didnt)
+Pills 1 and 2 dumped the entire semantic layer into every prompt. That doesn't scale past a handful of tables, which is the actual reason routing exists: match the question to a small, relevant slice of the schema, and hand over only that.
 
-**Routing** means matching a question to a small, relevant slice of the schema, and handing the model only that slice. Everything else in the schema stays invisible to it.
+Your checkout already ships the *fixed* version of this routing config, the bugs described below were found and closed while building it. You're going to read the mechanism, run it as-is, and then deliberately turn one fix off to watch the original bug come back, safely, on your own copy.
 
-## How one routing entry gets written
+## Read the routing config in your checkout
 
-A routing config maps keyword patterns to a `question_type`: which table(s) answer this kind of question, how to join them, and any caveat specific to that question. This is a real, unedited entry:
+Open [`agent_stack/agent_config/agent_routing.yml`](https://github.com/moradabaz/pms-semantic-layer/blob/main/agent_stack/agent_config/agent_routing.yml) and find `adr_vs_cost`:
 
 ```yaml
-- type: revenue_per_property_manager
-  keywords: ["property manager", "manager's portfolio", "each of their accommodations"]
-  primary_mart: mart_kpi
-  columns: [revpan, adr]
-  secondary_tables: [dim_accommodation]
-  join_keys:
-    - "mart_kpi.accommodation_id = dim_accommodation.accommodation_id"
+- type: adr_vs_cost
+  keywords: ["adr vs cost", "profitability", "normalized cost", "cost per night", "is this accommodation profitable"]
+  primary_mart: mart_aggregates
+  secondary_tables: [dim_accommodation, mart_kpi]
   notes: >
-    dim_accommodation.property_manager_id is the CURRENT manager.
-    fct_reservation deliberately excludes property_manager_id (it's a
-    frozen snapshot at booking time) -- a historical variant of this
-    question should hit the fallback, not reach into a different table.
+    ADR itself is ALREADY a validated column on mart_kpi.adr -- never
+    recompute ADR from raw mart_aggregates columns...
 ```
 
-The `notes` field is where the real decision lives: this entry joins the table holding the accommodation's *current* manager, not a frozen snapshot of whoever managed it *at booking time*, because those answer two different questions, and only a person deciding the routing config knows which one a given phrasing actually means.
+The `notes` field is where the real decision lives, whether to reuse an already-correct column or let the model reconstruct a formula from raw ingredients. Now open [`routing.py`](https://github.com/moradabaz/pms-semantic-layer/blob/main/agent_stack/chapters/13-live-agent/agent/routing.py):
 
-Two more rules sit above every entry: a `fallback` that asks for clarification instead of guessing when nothing matches, and a rule that prefers the more specific match when several types match at once.
+```python
+def _words(text: str) -> set[str]:
+    return set(_WORD_RE.findall(text.lower()))
 
-## How the config actually gets matched
+def match_question_type(question: str, routing_config: dict) -> dict | None:
+    question_words = _words(question)
+    best_type, best_word_count = None, -1
+    for question_type in routing_config["question_types"]:
+        for keyword in question_type["keywords"]:
+            keyword_words = _words(keyword)
+            if keyword_words.issubset(question_words) and len(keyword_words) > best_word_count:
+                best_type, best_word_count = question_type, len(keyword_words)
+    return best_type
+```
 
-A YAML file doesn't match anything by itself, a function does, and its limits are the whole story of this pill. This is a plain substring search: for every keyword of every question type, check if that exact phrase appears anywhere in the lowercased question, and the longest matching keyword wins.
+This matches on the *set of words* in a keyword, regardless of order or what's inserted between them, so "normalized cost" matches a question containing "normalized daily cost" (the word "daily" doesn't break it). That's a deliberate fix. You're about to see what happens without it.
 
-Run it by hand against one of this pill's real questions: *"Which accommodations have an ADR lower than their **normalized daily cost**..."*, checked against the keyword `"normalized cost"`. Is the literal substring `"normalized cost"` present in `"normalized daily cost"`? No, the word "daily" sits in between, so the keyword never matches. That single detail explains the whole misrouting bug below, before a single query gets generated.
+## Run it yourself
 
-Whichever type wins, only its `primary_mart` and `secondary_tables` get rendered into the prompt, with live column names and types, plus its `join_keys` and `notes`. Every other table in the project is simply never written into the string the model sees.
+```bash
+docker compose run --rm \
+  -e TRANSCRIPT_PATH=/content/pill-3-transcript.md \
+  live-agent python main.py
+```
 
-## The result: a mixed bag, and every failure is a different shape
+This runs [`main.py`](https://github.com/moradabaz/pms-semantic-layer/blob/main/agent_stack/chapters/13-live-agent/agent/main.py): for each of the original six questions, it matches a `question_type`, builds a context with only that type's tables, and asks the model. Open `local_output/pill-3-transcript.md` and check the `Matched question_type` line for each question. With the fixed config and fixed matching function, you should see every question hit a real type, not the fallback, and mostly correct answers, this is the fixed, current state of the project, chapter 13's actual shipped result.
 
-**A typo, caught immediately.** The model wrote a column name with one extra letter, and Postgres rejected it outright. Wrong, but impossible to mistake for a real answer, this is the *good* kind of failure.
+## See the historical bug on your own machine
 
-**An honest "I don't know."** One question matched no question type at all. The fallback kicked in: *"I don't have a defined routing rule for this question."* No guess, no query. This is routing doing exactly its job, the gap here is coverage, not correctness.
+The code you just ran is mounted from your host into the container, so editing it takes effect immediately, no rebuild needed. Open `agent_stack/chapters/13-live-agent/agent/routing.py` and temporarily replace the whole file's matching function with the original, pre-fix version:
 
-**A different kind of honesty.** For the ADR-vs-cost question, the matched type only exposed the KPI table, no cost data in scope. The model didn't invent a cost column, it replied that it couldn't answer without one. In the earlier pill, the same question got a correct, silent answer, because that context happened to include the cost table this routed context excluded. Narrower context traded a right answer for an honest refusal, not a bad trade, but not a free one either.
+```python
+def match_question_type(question, routing_config):
+    question_lower = question.lower()
+    best_type = None
+    best_keyword_len = -1
 
-**The same grain bug from Pill 2, worse.** The month-with-most-cancellations question returned **15 rows**, several of them duplicates, because the query filtered for the maximum accommodation-month value without ever grouping across accommodations first. This isn't a new bug, it's proof that neither richer documentation nor scoped routing, on its own, closes a grain mismatch that nobody wrote down explicitly.
+    for question_type in routing_config["question_types"]:
+        for keyword in question_type["keywords"]:
+            if keyword.lower() in question_lower and len(keyword) > best_keyword_len:
+                best_type = question_type
+                best_keyword_len = len(keyword)
 
-## What routing changed, and what it didn't
+    return best_type
+```
 
-Routing's real job is reducing noise: fewer tables in view means fewer chances to reference something irrelevant or nonexistent. It did that here, no hallucinated table names anywhere in this run. What it does *not* do automatically:
+This is a plain substring search: the exact phrase `"normalized cost"` has to appear verbatim in the question. Save the file, then re-run the exact same command:
 
-- **It doesn't fix a grain bug.** A grain mismatch lives in one table's own definition. Trimming the context down to "just the right tables" doesn't help if the right table is still ambiguous about its own grain.
-- **It can accidentally remove a table the question actually needs**, trading a wrong answer for an honest refusal, better than being wrong, but still not the goal.
-- **It says nothing about what the agent is *allowed* to do.** Every query here still ran read-only, with no write access, but nothing here stops it from reading a schema or a column it shouldn't have access to at all, like a guest's name or email. That's a different guarantee, from a different layer.
+```bash
+docker compose run --rm \
+  -e TRANSCRIPT_PATH=/content/pill-3-bug-transcript.md \
+  live-agent python main.py
+```
 
-> **Key lesson:** a routing config is a map of *where to look*, not a guarantee of *what's correct once you get there*. Test it against real questions before trusting it, this project found both gaps here (a missing keyword, a missing table) by actually running the agent, not by reading the YAML.
+Open `local_output/pill-3-bug-transcript.md` and check the question about ADR vs. normalized daily cost. Is the literal substring `"normalized cost"` present in `"normalized daily cost"`? No, the word "daily" sits in between, so the keyword never matches, and that `question_type` never even enters the comparison. You should see it fall through to a different, cost-blind type, or the fallback. **Revert the file when you're done**: `git checkout -- agent_stack/chapters/13-live-agent/agent/routing.py`.
 
-Two fixes closed the gaps found here: a routing keyword covering the missing phrasing, and switching from exact-phrase matching to matching on the *set of words* in a keyword, regardless of order or what's inserted between them. Neither fix was a smarter algorithm finding gaps on its own, both were a person looking at one specific real failure and deciding exactly what the config was missing.
+## What actually happened when this was first found
+
+With the old substring matcher, that same question got routed to a context with no cost data in scope, and the model didn't invent a cost column, it honestly replied that it couldn't answer without one. Compare that to Pill 1, where the same question got a correct, silent answer, because that experiment's full-schema context happened to include the cost table this routed context excluded. Narrower context traded a right answer for an honest refusal, not a bad trade, but not a free one either.
+
+> **Key lesson:** a routing config is a map of *where to look*, not a guarantee of *what's correct once you get there*. Test it against real questions before trusting it, this exact bug was found by running the agent, not by reading the YAML.
+
+## What this teaches you
+
+- **Routing and access control answer two different questions.** Routing decides which tables answer a question correctly and efficiently. Scope (the next pill) decides what the agent is never allowed to touch, regardless of routing.
+- **A routing entry needs a `notes` field for one reason**: to encode a decision only a person who understands the business can make, like which of two similarly-named columns is correct.
+- **A fix to a matching algorithm can introduce a new kind of ambiguity.** Switching from substring to word-set matching fixed this bug, but made ties between similarly-specific keywords more likely elsewhere, a real regression covered in [Pill 4](/blog/semantic-layer-pill-4-access-control).
+
+Go deeper in [02-agent-routing-and-scope.md](https://github.com/moradabaz/semantic-layer-pills/blob/main/interview-prep/02-agent-routing-and-scope.md): the full checklist for writing a `question_types` entry, four real findings from a domain-expert review of this exact config (not just a YAML lint), and why "marts only" access control once collided with half of this routing table before both configs were checked against each other.
 
 ---
 

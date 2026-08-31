@@ -11,7 +11,9 @@ export async function getStaticPaths() {
 }
 
 const { post } = Astro.props;
-const { Content } = await post.render();
+const { Content, headings } = await post.render();
+
+const tocHeadings = headings.filter(h => h.depth === 2 || h.depth === 3);
 
 const formattedDate = post.data.pubDate.toLocaleDateString('en-US', {
   year: 'numeric',
@@ -20,46 +22,125 @@ const formattedDate = post.data.pubDate.toLocaleDateString('en-US', {
 });
 ---
 
-<BaseLayout 
-  title={`${post.data.title} | Morad Abaz`} 
+<BaseLayout
+  title={`${post.data.title} | Morad Abaz`}
   description={post.data.description}
 >
   <article class="article-container">
-    <div class="container">
-      <!-- Article Header -->
-      <header class="article-header">
-        <a href="/blog" class="back-link">
-          ← Back to Articles
-        </a>
+    <div class="container article-page-container">
+      <div class:list={['article-layout', { 'has-toc': tocHeadings.length > 1 }]}>
+        <div class="article-main">
+          <!-- Article Header -->
+          <header class="article-header">
+            <a href="/blog" class="back-link">
+              ← Back to Articles
+            </a>
 
-        <div class="article-meta">
-          <span class="badge badge-purple">{post.data.category}</span>
-          <span class="date">{formattedDate}</span>
-          <span class="author">By {post.data.author}</span>
+            <div class="article-meta">
+              <span class="badge badge-purple">{post.data.category}</span>
+              <span class="date">{formattedDate}</span>
+              <span class="author">By {post.data.author}</span>
+            </div>
+
+            <h1 class="article-title">{post.data.title}</h1>
+            <p class="article-lead">{post.data.description}</p>
+
+            <div class="tags-container">
+              {post.data.tags.map((tag: string) => (
+                <span class="badge">{tag}</span>
+              ))}
+            </div>
+
+            {tocHeadings.length > 1 && (
+              <details class="toc-mobile">
+                <summary>On this page</summary>
+                <ul class="toc-list">
+                  {tocHeadings.map(h => (
+                    <li class:list={['toc-item', `toc-depth-${h.depth}`]}>
+                      <a href={`#${h.slug}`}>{h.text}</a>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          </header>
+
+          <!-- Article Body -->
+          <div class="glass-card article-body prose">
+            <Content />
+          </div>
         </div>
 
-        <h1 class="article-title">{post.data.title}</h1>
-        <p class="article-lead">{post.data.description}</p>
-
-        <div class="tags-container">
-          {post.data.tags.map((tag: string) => (
-            <span class="badge">{tag}</span>
-          ))}
-        </div>
-      </header>
-
-      <!-- Article Body -->
-      <div class="glass-card article-body prose">
-        <Content />
+        {tocHeadings.length > 1 && (
+          <aside class="toc-sidebar">
+            <nav class="toc-nav" aria-label="Table of contents">
+              <p class="toc-label">On this page</p>
+              <ul class="toc-list">
+                {tocHeadings.map(h => (
+                  <li class:list={['toc-item', `toc-depth-${h.depth}`]}>
+                    <a href={`#${h.slug}`} class="toc-link" data-toc-slug={h.slug}>{h.text}</a>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          </aside>
+        )}
       </div>
     </div>
   </article>
 </BaseLayout>
 
+<script>
+  const tocLinks = document.querySelectorAll<HTMLAnchorElement>('.toc-link[data-toc-slug]');
+
+  if (tocLinks.length) {
+    const headingEls = Array.from(tocLinks)
+      .map(link => document.getElementById(link.dataset.tocSlug ?? ''))
+      .filter((el): el is HTMLElement => el !== null);
+
+    const setActive = (id: string) => {
+      tocLinks.forEach(link => {
+        link.classList.toggle('active', link.dataset.tocSlug === id);
+      });
+    };
+
+    const observer = new IntersectionObserver(
+      entries => {
+        const visible = entries.filter(entry => entry.isIntersecting);
+        if (visible.length > 0) {
+          setActive(visible[0].target.id);
+        }
+      },
+      { rootMargin: '-96px 0px -70% 0px', threshold: 0 }
+    );
+
+    headingEls.forEach(el => observer.observe(el));
+  }
+</script>
+
 <style>
   .article-container {
     padding-top: 4rem;
     padding-bottom: 6rem;
+  }
+
+  .article-page-container {
+    max-width: 1180px;
+  }
+
+  .article-layout {
+    display: block;
+  }
+
+  .article-layout.has-toc {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 230px;
+    gap: 2.5rem;
+    align-items: start;
+  }
+
+  .article-main {
+    min-width: 0;
   }
 
   .back-link {
@@ -112,6 +193,104 @@ const formattedDate = post.data.pubDate.toLocaleDateString('en-US', {
     max-width: 860px;
     margin: 0 auto;
     padding: 3rem;
+  }
+
+  /* Desktop sidebar TOC */
+  .toc-sidebar {
+    position: sticky;
+    top: 5.5rem;
+    max-height: calc(100vh - 7rem);
+    overflow-y: auto;
+  }
+
+  .toc-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-dim);
+    margin-bottom: 0.85rem;
+  }
+
+  .toc-nav .toc-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    border-left: 2px solid var(--border-color);
+  }
+
+  .toc-nav .toc-link {
+    display: block;
+    padding: 0.3rem 0 0.3rem 0.9rem;
+    margin-left: -2px;
+    border-left: 2px solid transparent;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: var(--text-muted);
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+
+  .toc-nav .toc-depth-3 .toc-link {
+    padding-left: 1.7rem;
+    font-size: 0.81rem;
+  }
+
+  .toc-nav .toc-link:hover {
+    color: var(--accent-blue);
+  }
+
+  .toc-nav .toc-link.active {
+    color: var(--accent-blue);
+    border-left-color: var(--accent-blue);
+    font-weight: 500;
+  }
+
+  /* Mobile collapsible TOC */
+  .toc-mobile {
+    display: none;
+  }
+
+  @media (max-width: 1024px) {
+    .article-layout.has-toc {
+      display: block;
+    }
+
+    .toc-sidebar {
+      display: none;
+    }
+
+    .toc-mobile {
+      display: block;
+      margin-top: 1.5rem;
+      padding: 0.9rem 1.1rem;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+    }
+
+    .toc-mobile summary {
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: var(--text-main);
+    }
+
+    .toc-mobile .toc-list {
+      list-style: none;
+      margin-top: 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .toc-mobile .toc-depth-3 {
+      padding-left: 1rem;
+    }
+
+    .toc-mobile a {
+      font-size: 0.88rem;
+    }
   }
 
   @media (max-width: 768px) {
