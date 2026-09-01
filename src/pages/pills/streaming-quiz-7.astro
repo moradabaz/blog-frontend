@@ -7,9 +7,9 @@ const questions = [
     question: "What is a straggler event?",
     options: [
       "An event that arrives after the window it belongs to has already closed",
-      "An event with no timestamp at all",
-      "An event that gets duplicated across two consumers",
-      "An event rejected because it failed schema validation"
+      "An event that gets duplicated because two consumers read it independently",
+      "An event that fails schema validation and is rejected outright",
+      "An event with a payload larger than the broker's configured limit"
     ],
     correct: 0,
     explanation: "A straggler is simply an event that shows up late, after its window has already produced a result."
@@ -17,21 +17,21 @@ const questions = [
   {
     question: "When is the drop policy for late events appropriate?",
     options: [
-      "Only for financial transactions",
+      "Whenever the late event arrives more than a full day after its window closed",
+      "Only when the pipeline is built exclusively on tumbling windows",
       "For non-critical analytical metrics where a small margin of error is acceptable and reopening a closed window is not worth the cost",
-      "Whenever the event is more than 1 second late",
-      "Only when using tumbling windows"
+      "Only for financial transactions where every value must reconcile exactly"
     ],
-    correct: 1,
+    correct: 2,
     explanation: "Dropping and logging fits low-stakes metrics, like page view counts, where a small, occasional undercount does not justify the cost of reopening windows."
   },
   {
     question: "What does the update (retract and correct) policy actually do?",
     options: [
-      "It silently ignores the late event",
+      "It silently drops the late event and logs it for offline review",
       "It reopens the closed window, recalculates the aggregate with the late event, and emits a correction downstream",
-      "It deletes the entire day's data and restarts",
-      "It moves the late event to a different topic without processing it"
+      "It discards the entire day's data and restarts the pipeline from scratch",
+      "It routes the late event to a separate topic without ever processing it"
     ],
     correct: 1,
     explanation: "Update policies reopen the affected window, redo the calculation including the late event, and push a corrected result downstream."
@@ -39,32 +39,32 @@ const questions = [
   {
     question: "Why is the update policy mandatory for something like billing reconciliation?",
     options: [
-      "Because billing systems cannot use tumbling windows",
+      "Because billing systems are technically incapable of using tumbling windows",
+      "Because it is cheaper to implement than the drop policy in most engines",
       "Because accuracy is non-negotiable, an undercounted or wrong total is not acceptable",
-      "Because billing events are never late in practice",
-      "Because it is cheaper than the drop policy"
+      "Because billing events, in practice, essentially never arrive late"
     ],
-    correct: 1,
+    correct: 2,
     explanation: "Financial totals need to be exactly right, so silently dropping a late payment event is not an acceptable trade-off."
   },
   {
     question: "What is the real cost of choosing the update policy everywhere?",
     options: [
-      "None, it is always strictly better than dropping",
-      "The system must be able to reopen any window within an allowed lateness threshold, which increases state size and downstream complexity",
-      "It requires switching from Kafka to a traditional queue",
-      "It removes the need for event time entirely"
+      "It has no real cost, it is strictly better than dropping in every case",
+      "It removes the need to define event time on any incoming event",
+      "It forces a full migration from Kafka to a traditional message queue",
+      "The system must be able to reopen any window within an allowed lateness threshold, which increases state size and downstream complexity"
     ],
-    correct: 1,
+    correct: 3,
     explanation: "Supporting corrections means keeping windows reopenable for longer, which grows the state the system has to hold and adds complexity for every downstream consumer."
   },
   {
     question: "Who should decide the lateness policy for a given pipeline, according to this pill?",
     options: [
-      "The engineering team, based purely on what is easiest to implement",
+      "It should always default to dropping, regardless of what the use case actually needs",
       "The business, since the decision is about acceptable risk and cost, not a technical preference",
-      "Whoever wrote the original Kafka topic",
-      "It should always default to drop, regardless of the use case"
+      "Whoever originally created the source Kafka topic",
+      "The engineering team, based purely on whichever option is easiest to implement"
     ],
     correct: 1,
     explanation: "This is a business call about how much risk of undercounting is acceptable, weighed against the cost of supporting corrections."

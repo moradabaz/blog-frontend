@@ -6,10 +6,10 @@ const questions = [
   {
     question: "What is a tumbling window?",
     options: [
-      "A window defined by user activity instead of a fixed clock",
+      "A window that moves continuously and produces a new result every few seconds",
       "A fixed, non-overlapping interval, like every hour from 10:00 to 11:00",
-      "A window that moves continuously and updates every few seconds",
-      "A window that never closes"
+      "A window defined by user activity instead of a fixed clock boundary",
+      "A window that never closes and keeps accumulating state indefinitely"
     ],
     correct: 1,
     explanation: "Tumbling windows are fixed-size, back-to-back intervals with no overlap, simple to reason about, but with edge effects at the boundary."
@@ -17,54 +17,54 @@ const questions = [
   {
     question: "What is the main trade-off of a tumbling window?",
     options: [
-      "It uses more memory than any other window type",
+      "It requires far more memory than sliding or session windows",
+      "It cannot be used to compute simple hourly business reports",
       "An event right at the boundary can get split from a related event just seconds away, diluting the correlation",
-      "It cannot be used for hourly business reports",
-      "It requires session tracking"
+      "It always requires tracking a per-user inactivity timeout"
     ],
-    correct: 1,
+    correct: 2,
     explanation: "Two related actions that happen a second apart but straddle the boundary end up counted in two separate windows, which weakens the connection between them."
   },
   {
     question: "What is a sliding window good for, and what does it cost?",
     options: [
-      "Good for user session analysis, costs almost no memory",
+      "Good for one-time historical reports, and it costs essentially nothing extra",
+      "Good for user session analysis, and it costs almost no memory at all",
       "Good for monitoring and alerting on a moving range like 'last 10 minutes', but costs more memory because a single event can belong to multiple overlapping windows at once",
-      "Good for one-time historical reports, costs nothing extra",
-      "Good only for stream-to-table joins"
+      "Good only for enriching a stream with a slowly changing reference table"
     ],
-    correct: 1,
+    correct: 2,
     explanation: "Sliding windows overlap by design, which is great for catching moving patterns, but it means the engine has to store and process each event multiple times."
   },
   {
     question: "What defines when a session window closes?",
     options: [
-      "A fixed clock boundary, like the top of every hour",
       "A configurable gap of inactivity after the last event in that session",
-      "The moment the 100th event arrives",
-      "Whenever the producer sends a close signal"
+      "A fixed clock boundary, like the top of every hour",
+      "The moment a predetermined number of events, like 100, has arrived",
+      "An explicit close signal that the producer must send"
     ],
-    correct: 1,
+    correct: 0,
     explanation: "A session opens on the first event and stays open until the user goes quiet for longer than the configured timeout."
   },
   {
     question: "Why is a session window the most expensive of the three types described here?",
     options: [
-      "It requires the most CPU per event",
-      "It can only be closed in hindsight, so the system may need to keep state open for every active user for a long time",
-      "It always uses more partitions than tumbling or sliding windows",
-      "It cannot be implemented in Flink"
+      "It always requires more Kafka partitions than tumbling or sliding windows",
+      "It cannot be implemented on top of Flink or any similar engine",
+      "It demands more CPU per individual event than the other two window types",
+      "It can only be closed in hindsight, so the system may need to keep state open for every active user for a long time"
     ],
-    correct: 1,
+    correct: 3,
     explanation: "Since a session can't be declared closed until the inactivity gap has actually passed, the engine has to keep potentially long-lived state open per user."
   },
   {
     question: "According to this pill, what question does every window type ultimately answer differently?",
     options: [
-      "Which programming language to use for the pipeline",
+      "Which programming language is best suited to implement the windowing logic",
       "How much memory you are willing to spend versus how much edge-case accuracy you are willing to give up",
-      "Whether to use Kafka or Kinesis as the broker",
-      "Whether the data should be stored in Parquet or JSON"
+      "Whether Kafka or Kinesis is the more appropriate broker to use",
+      "Whether the underlying data should be stored as Parquet or as JSON"
     ],
     correct: 1,
     explanation: "Tumbling, sliding, and session windows are three different answers to the same trade-off between memory cost and how accurately edge cases are captured."

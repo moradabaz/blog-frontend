@@ -6,10 +6,10 @@ const questions = [
   {
     question: "What is the defining trait of a message in the traditional queue paradigm?",
     options: [
-      "It is an immutable record of something that already happened",
+      "It is a self-contained record of a fact that can be replayed by any number of independent readers",
       "It is a command with direct intent, addressed to one consumer that is expected to act on it and confirm",
-      "It can be read by any number of independent consumers without coordination",
-      "It never needs to be deleted after being processed"
+      "It is a broadcast notification that any number of unrelated systems can react to independently",
+      "It is an immutable log entry that a producer appends without knowing who will read it"
     ],
     correct: 1,
     explanation: "A message is addressed to a specific consumer and expects that consumer to execute an action, GenerateInvoice or SendEmail, and confirm it was done."
@@ -17,10 +17,10 @@ const questions = [
   {
     question: "What is the defining trait of an event?",
     options: [
-      "It is a command telling a specific system what to do next",
+      "It is a command telling one specific downstream system exactly what action to perform next",
       "It is an immutable, self-contained record of a fact that already happened, published without knowing who will read it",
-      "It always requires an acknowledgment before the producer can continue",
-      "It must be deleted from the log as soon as one consumer reads it"
+      "It is a request that blocks the producer until the consumer sends back a confirmation",
+      "It is a temporary record that gets deleted from the broker the moment one consumer reads it"
     ],
     correct: 1,
     explanation: "An event describes a fact, like PaymentCompleted. The producer publishes it without caring who consumes it or how many consumers there are."
@@ -28,21 +28,21 @@ const questions = [
   {
     question: "A producer publishes PaymentCompleted. Billing, analytics, and fraud detection all react to it independently. What does this demonstrate?",
     options: [
-      "Point-to-point coupling between producer and consumer",
       "Broadcast, decoupled architecture: the producer does not need to know who consumes the event",
-      "That the event is actually a message in disguise",
-      "That the event must be deleted once billing reads it"
+      "Point-to-point coupling, since the producer must explicitly address each of the three consumers",
+      "That PaymentCompleted is actually a command being routed to three different queues",
+      "That the event gets deleted once the first of the three consumers reads it"
     ],
-    correct: 1,
+    correct: 0,
     explanation: "Multiple independent systems can react to the same fact without the producer being aware of any of them. That is the broadcast property events give you."
   },
   {
     question: "You see an event named GenerateInvoice in a system. What does this pill say that name reveals?",
     options: [
-      "Nothing, naming does not matter for events",
+      "That the event was published to a queue instead of a log-based topic",
       "That it is likely a command disguised as an event, hinting at hidden point-to-point coupling",
-      "That the event was published by a queue instead of a topic",
-      "That it must be a stream-to-table join"
+      "That the system is using a stream-to-table join internally",
+      "That the payload is probably too large to fit in a single Kafka message"
     ],
     correct: 1,
     explanation: "A verb aimed at a specific system, like GenerateInvoice, reads like a command. If your 'events' are full of these, you have built a distributed RPC system, not a streaming pipeline."
@@ -50,10 +50,10 @@ const questions = [
   {
     question: "What breaks first when you add a new consumer to a system built entirely on messages instead of events?",
     options: [
-      "Nothing breaks, messages scale the same way events do",
+      "The broker automatically discovers the new consumer and requires no changes at all",
       "The sender usually needs to change, because it has to know who to address the new command to",
-      "The broker automatically discovers the new consumer",
-      "The original consumer stops receiving anything"
+      "The original consumer stops receiving anything until the new one is removed",
+      "Every existing message in the queue gets duplicated for the new consumer"
     ],
     correct: 1,
     explanation: "Messages create point-to-point dependencies. Adding a consumer to an event-based system just means pointing a new reader at the existing topic, with no change upstream."
@@ -62,9 +62,9 @@ const questions = [
     question: "Which naming test does Pill 1 suggest for telling events and messages apart?",
     options: [
       "Check if the name reads like a fact that already happened versus a verb aimed at a specific system",
-      "Check whether the payload is JSON or XML",
-      "Check how many bytes the message occupies",
-      "Check whether it was published to Kafka or to S3"
+      "Check whether the payload is serialized as JSON or as Avro",
+      "Check how many partitions the underlying topic has been configured with",
+      "Check whether the message was published synchronously or asynchronously"
     ],
     correct: 0,
     explanation: "OrderShipped reads like a fact. ChargeCard reads like a command. That distinction, not the transport, is what separates an event from a message."

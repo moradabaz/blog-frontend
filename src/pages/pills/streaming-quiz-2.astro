@@ -6,10 +6,10 @@ const questions = [
   {
     question: "What is event time?",
     options: [
-      "The moment your server received and processed the event",
+      "The moment your infrastructure observed and handled the event, which shifts with network delay",
       "The moment something actually happened in the real world, stored as a field inside the event",
-      "The average delay across all events in a topic",
-      "A timestamp assigned by the consumer when it finishes processing"
+      "The average delay measured across all events currently sitting in a topic",
+      "A timestamp assigned by the consumer once it finishes processing the event"
     ],
     correct: 1,
     explanation: "Event time lives inside the event itself, as an immutable field, and marks when it actually happened, not when anyone found out about it."
@@ -17,10 +17,10 @@ const questions = [
   {
     question: "What is processing time?",
     options: [
-      "The moment something happened in the real world",
+      "The moment something actually happened in the real world, fixed at the source",
       "The moment your infrastructure observed and handled the event, which shifts with network delay",
-      "A timestamp that never changes once set",
-      "The time it takes to run a batch job"
+      "A timestamp that is calibrated once and never changes for the life of the event",
+      "The total duration a batch job takes to finish running"
     ],
     correct: 1,
     explanation: "Processing time depends on when your system happens to see the event, so it moves with every network delay or outage."
@@ -28,32 +28,32 @@ const questions = [
   {
     question: "A purchase happens at 14:58 but reaches the server at 15:02. If the pipeline buckets it by processing time, what happens?",
     options: [
-      "Nothing, both timestamps always produce the same bucket",
+      "The event gets duplicated into both the 14:00-15:00 and 15:00-16:00 windows",
+      "The event is automatically discarded because it crosses an hour boundary",
       "It lands in the 15:00-16:00 window instead of the correct 14:00-15:00 window",
-      "The event is automatically discarded",
-      "The event is duplicated into both windows"
+      "Nothing changes, since event time and processing time always agree within the same hour"
     ],
-    correct: 1,
+    correct: 2,
     explanation: "Trusting processing time here misplaces the purchase into the wrong hourly bucket, which is exactly wrong if the business needs an accurate cutoff."
   },
   {
     question: "Why does this pill call late and out-of-order events 'not an edge case'?",
     options: [
-      "Because they only happen during outages",
+      "Because they only happen during rare, unplanned network outages",
+      "Because Kafka technically refuses to accept any event tagged as late",
       "Because distributed systems run on unstable networks by default, so this happens under normal operating conditions",
-      "Because Kafka refuses to accept late events",
-      "Because it only affects sliding windows"
+      "Because it is a problem unique to sliding windows and does not affect tumbling ones"
     ],
-    correct: 1,
+    correct: 2,
     explanation: "Networks are inherently unstable. Late and out-of-order events are a normal condition to design for, not a rare failure mode."
   },
   {
     question: "Why doesn't running a batch script every 1 minute instead of every 10 minutes fix the event time vs processing time problem?",
     options: [
-      "It does fix it, shorter intervals always solve the issue",
+      "It does fix it, since a short enough interval makes the delay negligible in practice",
       "The problem is architectural, about which clock you trust, not about how often the script runs",
-      "Because 1-minute scripts are technically impossible",
-      "Because Kafka does not support 1-minute intervals"
+      "1-minute intervals are technically unsupported by most schedulers",
+      "Kafka topics cannot be polled more than once every 10 minutes"
     ],
     correct: 1,
     explanation: "A shorter interval does not change which clock the script trusts. If it still buckets by processing time, delayed events still land in the wrong bucket."
@@ -61,12 +61,12 @@ const questions = [
   {
     question: "What does the calibration formula Calibrated Event Time = Device Event Time + (Server Receive Time − Device Send Time) correct for?",
     options: [
-      "Compression errors in the event payload",
       "Drift and unreliability in device clocks, by adjusting the event time using the observed network offset",
-      "The size of the reference table in a stream-to-table join",
-      "The number of partitions a topic should have"
+      "The number of partitions a topic should have to handle peak throughput",
+      "Compression artifacts introduced when the event payload is serialized",
+      "The size of the reference table used in a stream-to-table join"
     ],
-    correct: 1,
+    correct: 0,
     explanation: "Mobile device clocks drift. This formula uses the gap between when the server received an event and when the device says it sent it, to correct the reported event time before trusting it."
   }
 ];

@@ -6,21 +6,21 @@ const questions = [
   {
     question: "What happens to a message in a traditional queue once a consumer reads and acknowledges it?",
     options: [
-      "It stays in the queue for other consumers",
       "It gets deleted from disk or memory immediately",
-      "It gets moved to a separate log for auditing",
-      "It gets replicated to every other consumer automatically"
+      "It stays available in the queue so other consumers can also read it later",
+      "It gets moved into a separate append-only log for future replay",
+      "It gets replicated automatically to every other consumer subscribed to the queue"
     ],
-    correct: 1,
+    correct: 0,
     explanation: "A traditional queue works on a process-and-destroy model. Once one consumer acknowledges a message, the broker removes it, and nobody else can read it."
   },
   {
     question: "What happens to an event in a log-based system like Kafka once a consumer reads it?",
     options: [
-      "It is deleted the moment that consumer finishes",
+      "It is deleted the moment that consumer finishes processing it",
       "It is not deleted, only the consumer's offset (its bookmark) moves forward",
-      "It is compressed and archived separately",
-      "It is converted into a message and requeued"
+      "It is converted into a traditional queue message and requeued for other readers",
+      "It is compressed and moved to a separate cold-storage topic"
     ],
     correct: 1,
     explanation: "Kafka's log is append-only and immutable. Reading an event never removes it; only the reading consumer's offset advances."
@@ -28,21 +28,21 @@ const questions = [
   {
     question: "Why can an Elasticsearch pipeline and a Spark job both read the exact same Kafka topic from the beginning of time without interfering with each other?",
     options: [
-      "Because Kafka duplicates the topic for every new consumer",
+      "Because Kafka duplicates the entire topic separately for each new consumer that subscribes",
+      "Because Kafka only allows one active consumer per topic at any given time",
       "Because each consumer tracks its own offset independently, and reading does not remove events from the log",
-      "Because Kafka only allows one consumer per topic",
-      "Because both jobs share the same offset"
+      "Because both jobs are required to share and coordinate a single offset"
     ],
-    correct: 1,
+    correct: 2,
     explanation: "Since the log is never destroyed and each consumer keeps its own bookmark, any number of independent readers can replay the same history without stepping on each other."
   },
   {
     question: "What does Kleppmann say a Kafka-style log has in common with a database's write-ahead log (WAL)?",
     options: [
-      "Both are deleted as soon as a transaction commits",
+      "Both are deleted as soon as the corresponding transaction or event is committed",
       "Both are immutable, append-only, sequential records that let readers rebuild state by replaying from a remembered point",
-      "Both require the consumer to acknowledge and destroy each entry",
-      "Neither one is ever written to disk"
+      "Both require the reader to acknowledge and permanently destroy each entry after use",
+      "Neither one is ever persisted to disk, since both prioritize in-memory speed"
     ],
     correct: 1,
     explanation: "A WAL and a streaming log share the same architecture: an append-only record that a reader can replay sequentially to reconstruct state, whether that reader is a database replica or a stream consumer."
@@ -50,23 +50,23 @@ const questions = [
   {
     question: "What is the shared principle behind a WAL and a streaming log, according to this pill?",
     options: [
-      "Speed over durability, both prioritize being fast over being complete",
+      "Speed over durability: both prioritize being fast over being complete or recoverable",
+      "Volatility over durability: both are meant to be temporary buffers that stay mostly empty",
       "Durability over volatility: disk is the source of truth, and any downstream state can be rebuilt from it after a failure",
-      "Volatility over durability, both are meant to be temporary buffers",
-      "Neither concept applies to real production databases"
+      "Neither principle applies once the system moves to a distributed, multi-node deployment"
     ],
-    correct: 1,
+    correct: 2,
     explanation: "Both treat structured disk as the permanent source of truth, unlike a traditional queue, which treats storage as a temporary buffer meant to be emptied quickly."
   },
   {
     question: "Why was Kafka designed around disk persistence instead of pure in-memory speed?",
     options: [
-      "Disk was the only storage available at the time",
-      "Because the log itself is meant to be the system of record, and every consumer, materialized view, or derived table is a projection built by reading it",
-      "Because in-memory storage cannot be partitioned",
-      "Because consumers cannot track offsets in memory"
+      "Disk was simply the only storage medium available to its original authors",
+      "Because in-memory storage cannot be split across multiple partitions",
+      "Because consumer offsets cannot be tracked reliably without writing to disk",
+      "Because the log itself is meant to be the system of record, and every consumer, materialized view, or derived table is a projection built by reading it"
     ],
-    correct: 1,
+    correct: 3,
     explanation: "Kafka treats the log as the durable source of truth. Everything downstream, consumers, materialized views, derived tables, is rebuilt by reading it, which only works if the log itself persists."
   }
 ];

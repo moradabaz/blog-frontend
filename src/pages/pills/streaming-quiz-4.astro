@@ -6,10 +6,10 @@ const questions = [
   {
     question: "A script processes '10:00 to 10:10' using processing time. What goes wrong?",
     options: [
-      "Nothing, processing time is always safe to bucket by",
+      "The script crashes immediately because processing time cannot be used in a WHERE clause",
       "Every event delayed by the network lands in the wrong bucket, no matter how short the interval is",
-      "The script runs out of memory immediately",
-      "It only affects session windows"
+      "The problem only appears if the script runs less often than once per minute",
+      "Nothing goes wrong, since processing time and event time always match within a 10-minute window"
     ],
     correct: 1,
     explanation: "Bucketing by processing time misplaces any event that was delayed, regardless of how short the batch interval is. The interval length does not fix a clock problem."
@@ -17,32 +17,32 @@ const questions = [
   {
     question: "If the same script switches to event time instead, what new problem appears?",
     options: [
-      "None, event time solves everything for free",
       "It may need to reopen and recompute previous runs whenever a late event arrives, so it stops being a simple 'last 10 minutes' job",
-      "It can no longer read from Kafka",
-      "It becomes faster than a true streaming engine"
+      "It can no longer connect to Kafka, since event time requires a different broker",
+      "It becomes strictly faster than any dedicated streaming engine",
+      "It loses the ability to compute any aggregate at all"
     ],
-    correct: 1,
+    correct: 0,
     explanation: "Using event time correctly means the script has to be able to revisit and recompute earlier windows when late data shows up, which is exactly the complexity a real streaming engine is built to handle."
   },
   {
     question: "Why does a micro-batch script computing 'unique users today' get more expensive as the day goes on?",
     options: [
-      "Because Postgres locks the table after noon",
+      "Because Postgres automatically locks the users table after every run",
+      "Because the schema for the users table changes every 10 minutes",
       "Because it re-reads everything from midnight to now on every run, instead of keeping incremental state",
-      "Because Kafka topics shrink over time",
-      "Because the schema changes every 10 minutes"
+      "Because Kafka topics used for this metric shrink in size over the course of a day"
     ],
-    correct: 1,
+    correct: 2,
     explanation: "Without incremental state, a cumulative metric forces the script to rescan the whole day so far, every single run, so the cost grows as the day progresses."
   },
   {
     question: "How does a real streaming engine avoid the growing rescan cost described above?",
     options: [
       "It keeps live intermediate state and updates it incrementally, one event at a time",
-      "It deletes old data at the end of each day",
-      "It runs the exact same script, just on a faster machine",
-      "It skips users who were already counted yesterday"
+      "It deletes all previously counted users at the end of each day",
+      "It runs the exact same rescan logic, just on more powerful hardware",
+      "It skips counting any user who was already seen the previous day"
     ],
     correct: 0,
     explanation: "A streaming engine updates its running total incrementally as each event arrives, instead of recomputing the whole history on a schedule."
@@ -50,10 +50,10 @@ const questions = [
   {
     question: "For a fraud alert or a temperature alarm, what is the risk of waiting for the next scheduled batch run?",
     options: [
-      "There is no risk, alerts are never time sensitive",
+      "There is no real risk, since alerts of this kind are rarely time sensitive",
       "The reaction can arrive too late to matter",
-      "The alert will be duplicated across every run",
-      "The alert will be sent to the wrong topic"
+      "The alert gets duplicated once for every scheduled run since the last trigger",
+      "The alert silently gets routed to the wrong monitoring dashboard"
     ],
     correct: 1,
     explanation: "Time-sensitive reactions need to happen close to the moment the condition occurs. Waiting for the next scheduled run can make the alert useless by the time it fires."
@@ -61,12 +61,12 @@ const questions = [
   {
     question: "According to this pill, do these three problems (boundaries, growing state cost, latency and idempotency) get smaller if you shorten the batch interval to 1 minute?",
     options: [
-      "Yes, a short enough interval eliminates all three",
-      "No, they are architectural problems, not a matter of running more often",
-      "Only the latency problem improves",
-      "Only the state cost problem improves"
+      "Yes, a short enough interval effectively eliminates all three problems",
+      "Only the boundary problem improves, while the other two stay the same",
+      "Only the state cost problem improves, while the other two get worse",
+      "No, they are architectural problems, not a matter of running more often"
     ],
-    correct: 1,
+    correct: 3,
     explanation: "None of these three problems are about speed. They come from the architecture itself: which clock is trusted, whether state is kept incrementally, and whether correctness guarantees are built in."
   }
 ];

@@ -6,67 +6,67 @@ const questions = [
   {
     question: "According to Kleppmann's inversion in Designing Data-Intensive Applications, which statement is correct?",
     options: [
-      "Streaming is a special case of batch, used only when speed matters",
+      "Streaming is a special case of batch: real-time systems just sample a continuous batch pipeline more frequently",
+      "Batch and streaming are two independent storage formats that don't share any underlying model",
       "Batch is a special case of streaming: the real world produces a continuous flow of events, and a batch job cuts it at a fixed point in time",
-      "Batch and streaming are two unrelated ways of storing data",
-      "Batch is always more accurate than streaming because it sees more data at once"
+      "Batch is more fundamental because it processes complete, finalized data instead of partial, evolving data"
     ],
-    correct: 1,
+    correct: 2,
     explanation: "Kleppmann's point is that data is inherently continuous and unbounded. A batch job is not a natural unit of work, it is a choice to cut that stream with scissors at a fixed boundary, like 'yesterday', and process the resulting slice as if it were the whole story."
   },
   {
     question: "A batch job that processes 'yesterday's data' is best described as what, in the model this series uses?",
     options: [
-      "A separate data source from the stream",
-      "A snapshot of the full history of the system",
+      "A complete historical archive that captures every event exactly once, with no gaps",
       "An arbitrary slice cut out of a continuous, unbounded stream of events",
-      "A queue of messages waiting to be deleted"
+      "A queue of messages waiting to be acknowledged and deleted by a single consumer",
+      "A separate, independently generated dataset that exists outside of the stream"
     ],
-    correct: 2,
+    correct: 1,
     explanation: "The stream itself has no natural start or end. A batch job takes one specific slice of it, bounded by a time window the engineer chose, not one that exists in the data itself."
   },
   {
     question: "Why does thinking of streaming as 'fast batch' lead to bad designs?",
     options: [
-      "It makes engineers write too much documentation",
       "It pushes engineers toward batch tools, like a script that runs every few minutes or a database round trip per event, for problems that actually need continuous local state",
-      "It requires buying more expensive hardware",
-      "It has no real consequence, the two models are interchangeable"
+      "It forces every pipeline to be rewritten in a functional programming language",
+      "It requires provisioning more disk space than a true streaming pipeline would need",
+      "It prevents the use of SQL-based transformations anywhere in the pipeline"
     ],
-    correct: 1,
+    correct: 0,
     explanation: "Pill 4 and Pill 5 in this series show this in detail: a scheduled script and a stateless function both try to solve a state problem without keeping state, which either breaks correctness or overwhelms an external database."
   },
   {
     question: "Which of these is a consequence of treating a stream as continuous and unbounded, per this pill?",
     options: [
+      "Every stream must be fully materialized to disk before any query can run against it",
       "A window over the stream is a design decision, not something you find already defined in the data",
-      "Every stream must be converted to a batch before it can be queried",
-      "Streaming systems cannot use SQL",
-      "Events must be deleted immediately after being read"
+      "Consumers must delete each event immediately after reading it to avoid unbounded growth",
+      "Aggregations become impossible unless the stream is first converted into a batch"
     ],
-    correct: 0,
+    correct: 1,
     explanation: "Since the stream never stops, any window (an hour, a day, a session) is a choice about memory, accuracy, and latency. Pill 6 covers this in depth."
   },
   {
     question: "Once an event has happened, what does this series treat it as?",
     options: [
-      "A draft that can still be edited",
-      "A temporary placeholder until a batch job confirms it",
       "A fact: immutable, it cannot be changed or deleted afterward",
-      "A message that must be acknowledged and removed by exactly one consumer"
+      "A draft record that gets finalized once the containing window closes",
+      "A temporary placeholder that a nightly batch job later confirms or discards",
+      "A command that a single consumer must execute and then acknowledge"
     ],
-    correct: 2,
+    correct: 0,
     explanation: "This is the foundation for Pill 1: an event describes something that already happened, so by definition it cannot be undone or rewritten later."
   },
   {
     question: "Which pair of concepts does Pill 0 say the rest of the series builds on top of the batch vs streaming inversion?",
     options: [
+      "Data warehouses and the star schema modeling technique",
       "Two clocks (event time and processing time), and windows as a chosen trade-off",
-      "GPU acceleration and columnar storage",
-      "REST APIs and GraphQL schemas",
-      "Data warehouses and star schemas"
+      "GPU acceleration and columnar in-memory storage formats",
+      "REST API versioning and GraphQL schema stitching"
     ],
-    correct: 0,
+    correct: 1,
     explanation: "Pill 2 covers the two clocks, and Pill 6 covers windows as a design decision. Both are direct consequences of accepting that a stream is continuous and unbounded."
   }
 ];

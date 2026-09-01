@@ -6,10 +6,10 @@ const questions = [
   {
     question: "In the Kinesis + Lambda + S3 + Glue + Athena pattern, what breaks when someone asks for a real-time hourly metric?",
     options: [
-      "Nothing, this architecture handles real-time aggregates natively",
+      "Athena becomes too slow to return results within the hour",
       "The pipeline cannot compute it at all, because Lambda has no memory between invocations",
-      "Athena becomes too slow to query",
-      "S3 refuses to store the raw events"
+      "S3 refuses to store more than one hour of raw events at a time",
+      "Glue automatically rejects any job that runs more than once per hour"
     ],
     correct: 1,
     explanation: "This architecture is built for stateless ingestion. The moment a metric needs memory across events over time, there is nowhere for that memory to live."
@@ -18,9 +18,9 @@ const questions = [
     question: "Why can't a Lambda function just remember the last 10 minutes of events on its own?",
     options: [
       "Lambda functions are stateless and short-lived, with no shared memory between invocations",
-      "Lambda functions are not allowed to read from Kinesis",
-      "AWS deletes Lambda's memory every hour",
-      "Lambda functions can only run once per day"
+      "AWS enforces a hard rule that Lambda cannot subscribe to Kinesis streams",
+      "Lambda functions are only allowed to run once every 10 minutes by design",
+      "Lambda's memory gets wiped by AWS on a fixed nightly schedule"
     ],
     correct: 0,
     explanation: "Each Lambda invocation starts and terminates with no shared memory to the next one, so it has nothing built in to remember what happened a moment ago."
@@ -28,10 +28,10 @@ const questions = [
   {
     question: "At 10,000 events per second, what happens if a Lambda tries to maintain state by reading and writing to an external database on every event?",
     options: [
-      "Nothing, external databases are built for this exact load",
+      "The database easily absorbs the load, since this is exactly the workload it was built for",
       "The database gets overwhelmed by network latency, CPU load, and locking",
-      "The events get automatically batched by AWS for free",
-      "Lambda switches to an in-memory mode automatically"
+      "AWS automatically batches the writes into a single request per second",
+      "Lambda switches itself into an in-memory caching mode after a few seconds"
     ],
     correct: 1,
     explanation: "Round-tripping to a database for every single event at that volume turns the database into the bottleneck, paying network and lock costs just to remember recent history."
@@ -39,34 +39,34 @@ const questions = [
   {
     question: "How does a stateful engine like Flink avoid hitting an external database on every event?",
     options: [
+      "It disables state tracking entirely and recomputes results from raw input each time",
+      "It stores all intermediate state directly in S3 instead of any database",
       "It keeps a high-performance key-value store, typically RocksDB, embedded directly inside the processing node",
-      "It stores all state in S3 instead of a database",
-      "It processes every event twice to be safe",
-      "It disables state entirely and recomputes from scratch each time"
+      "It processes every event exactly twice to guarantee correctness"
     ],
-    correct: 0,
+    correct: 2,
     explanation: "Flink embeds RocksDB inside the processing node itself, so state updates happen locally instead of over the network."
   },
   {
     question: "During a 1-hour tumbling window in Flink, how many network calls does it make to an external reporting database?",
     options: [
-      "One per incoming event",
-      "Zero, until the window closes, when it makes a single consolidated write",
-      "Exactly 60, one per minute",
-      "It depends on how many partitions the topic has"
+      "One per incoming event, the same as the Lambda pattern",
+      "Exactly 60, one for every minute inside the window",
+      "It depends entirely on how many partitions the source topic has",
+      "Zero, until the window closes, when it makes a single consolidated write"
     ],
-    correct: 1,
+    correct: 3,
     explanation: "While the window is open, Flink updates its local RocksDB counter with no external calls. Only when the window closes does it write once to the reporting layer."
   },
   {
     question: "What kind of workload is serverless still a good fit for, according to this pill?",
     options: [
-      "Any workload that needs aggregates over a rolling time window",
       "Stateless, short-lived, request-response work like ingestion, API backends, and file-processing triggers",
-      "Long-running session tracking across days",
-      "Materialized views joining two large tables"
+      "Any workload that needs aggregates computed over a rolling time window",
+      "Long-running session tracking that spans multiple days",
+      "Materialized views that join two large, constantly changing tables"
     ],
-    correct: 1,
+    correct: 0,
     explanation: "Serverless remains a strong choice exactly where it was designed to work: stateless, event-driven, request-response workloads."
   }
 ];
