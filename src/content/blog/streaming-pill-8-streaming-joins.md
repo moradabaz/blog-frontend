@@ -98,9 +98,10 @@ flowchart LR
     subgraph ST["Stream to table"]
         B1["Stream"] --- Buf2[("local replica via CDC")] --- B2["Reference table"]
     end
-subgraph TT["Table to table"]
+    subgraph TT["Table to table"]
         C1["Table A"] --- Buf3[("both tables in state")] --- C2["Table B"]
     end
+    SS ~~~ ST ~~~ TT
 ```
 
 ## The pattern across all three
