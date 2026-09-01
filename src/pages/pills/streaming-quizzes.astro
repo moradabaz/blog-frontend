@@ -1,0 +1,177 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+interface QuizLink {
+  topic: string;
+  tagline: string;
+  href: string;
+}
+
+const quizzes: QuizLink[] = [
+  { topic: 'Batch vs Streaming', tagline: 'Is batch really the default?', href: '/pills/streaming-quiz-0' },
+  { topic: 'Events vs Messages', tagline: 'Fact or command?', href: '/pills/streaming-quiz-1' },
+  { topic: 'Two Clocks', tagline: 'Which clock do you trust?', href: '/pills/streaming-quiz-2' },
+  { topic: 'Topics vs Queues', tagline: 'Does reading delete it?', href: '/pills/streaming-quiz-3' },
+  { topic: 'Micro-Batching', tagline: 'Is every 10 minutes streaming?', href: '/pills/streaming-quiz-4' },
+  { topic: 'State Bottleneck', tagline: 'Where does the memory live?', href: '/pills/streaming-quiz-5' },
+  { topic: 'Windows', tagline: 'Which window, and why?', href: '/pills/streaming-quiz-6' },
+  { topic: 'Late Events', tagline: 'Drop it, or fix it?', href: '/pills/streaming-quiz-7' },
+  { topic: 'Streaming Joins', tagline: "What's the memory budget?", href: '/pills/streaming-quiz-8' },
+  { topic: 'Three Questions', tagline: 'Run the checklist.', href: '/pills/streaming-quiz-9' }
+];
+---
+
+<BaseLayout
+  title="Streaming Pills Quizzes | Morad Abaz"
+  description="10 quizzes, one per Streaming Pill: events vs messages, event time, logs vs queues, state, windows, late data, and streaming joins."
+>
+  <div class="container page-container">
+    <a href="/pills" class="back-link">← Back to Quizzes</a>
+
+    <div class="page-header">
+      <div class="badge badge-series" style="margin-bottom: 0.8rem;">Quiz Set · 10 quizzes</div>
+      <h1>Streaming Pills <span class="gradient-text">Quizzes</span></h1>
+      <p class="page-subtitle">
+        One quiz per pill, in order. Each one checks whether the reasoning actually stuck,
+        not just whether you can recall a keyword.
+      </p>
+    </div>
+
+    <ol class="pills-list">
+      {quizzes.map((quiz, i) => (
+        <li class="pill-item">
+          <a href={quiz.href} class="pill-link">
+            <span class="pill-index">{String(i).padStart(2, '0')}</span>
+            <div class="pill-body">
+              <h3 class="pill-title">{quiz.topic}</h3>
+              <p class="pill-description">{quiz.tagline}</p>
+            </div>
+            <span class="pill-arrow" aria-hidden="true">→</span>
+          </a>
+        </li>
+      ))}
+    </ol>
+  </div>
+</BaseLayout>
+
+<style>
+  .page-container {
+    padding-top: 2.5rem;
+    padding-bottom: 5rem;
+  }
+
+  .back-link {
+    display: inline-block;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.8rem;
+    transition: color 0.2s ease;
+  }
+
+  .back-link:hover {
+    color: var(--accent-blue);
+  }
+
+  .badge-series {
+    background: var(--accent-blue);
+    color: #ffffff;
+  }
+
+  .page-header {
+    margin-bottom: 2.25rem;
+    max-width: 780px;
+  }
+
+  .page-header h1 {
+    margin-bottom: 0.6rem;
+  }
+
+  .page-subtitle {
+    font-size: 1rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+  }
+
+  .pills-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    list-style: none;
+  }
+
+  .pill-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .pill-item:hover {
+    transform: translateY(-2px);
+    border-color: var(--border-color-hover);
+    box-shadow: var(--shadow-hover);
+  }
+
+  .pill-link {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    padding: 1.15rem 1.4rem;
+    color: inherit;
+  }
+
+  .pill-link:hover {
+    color: inherit;
+  }
+
+  .pill-index {
+    flex-shrink: 0;
+    font-family: var(--font-mono);
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: var(--accent-blue);
+    width: 2.4rem;
+    text-align: center;
+  }
+
+  .pill-body {
+    flex-grow: 1;
+    min-width: 0;
+  }
+
+  .pill-title {
+    font-size: 1.02rem;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+    line-height: 1.4;
+  }
+
+  .pill-description {
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    line-height: 1.55;
+  }
+
+  .pill-arrow {
+    flex-shrink: 0;
+    color: var(--text-dim);
+    font-size: 1.1rem;
+    transition: transform 0.15s ease, color 0.15s ease;
+  }
+
+  .pill-item:hover .pill-arrow {
+    color: var(--accent-blue);
+    transform: translateX(3px);
+  }
+
+  @media (max-width: 640px) {
+    .pill-link {
+      flex-wrap: wrap;
+      gap: 0.6rem 1rem;
+    }
+    .pill-arrow {
+      display: none;
+    }
+  }
+</style>

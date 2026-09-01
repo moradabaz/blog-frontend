@@ -5,9 +5,19 @@ interface Props {
   count: number;
   href: string;
   badgeLabel?: string;
+  countLabel?: string;
+  footerLabel?: string;
 }
 
-const { title, description, count, href, badgeLabel = 'Series' } = Astro.props;
+const {
+  title,
+  description,
+  count,
+  href,
+  badgeLabel = 'Series',
+  countLabel = 'parts',
+  footerLabel = 'Browse the series →'
+} = Astro.props;
 ---
 
 <article class="glass-card series-card">
@@ -16,7 +26,7 @@ const { title, description, count, href, badgeLabel = 'Series' } = Astro.props;
       <div class="card-header">
         <div class="card-badges">
           <span class="badge badge-series">{badgeLabel}</span>
-          <span class="badge">{count} parts</span>
+          <span class="badge">{count} {countLabel}</span>
         </div>
         <span class="series-icon" aria-hidden="true">⚡</span>
       </div>
@@ -27,7 +37,7 @@ const { title, description, count, href, badgeLabel = 'Series' } = Astro.props;
 
       <div class="card-footer">
         <span class="read-more">
-          Browse the series →
+          {footerLabel}
         </span>
       </div>
     </div>

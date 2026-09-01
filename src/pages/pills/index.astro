@@ -1,54 +1,6 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
-
-interface QuizLink {
-  topic: string;
-  tagline: string;
-  href: string;
-}
-
-const sparkQuizzes: QuizLink[] = [
-  { topic: 'Why Not Pandas?', tagline: 'Do you really understand why Spark exists?', href: '/pills/quiz-pill-0' },
-  { topic: 'MapReduce', tagline: 'MapReduce fundamentals.', href: '/pills/quiz-pill-1' },
-  { topic: 'Lazy Evaluation & DAG', tagline: 'Lazy evaluation and the Catalyst optimizer.', href: '/pills/quiz-pill-2' },
-  { topic: 'The Shuffle', tagline: 'Shuffle internals and I/O trade-offs.', href: '/pills/quiz-pill-3' },
-  { topic: 'Join Strategies & Bucketing', tagline: 'Which join strategy should Spark use?', href: '/pills/quiz-pill-4' },
-  { topic: 'Data Skew', tagline: 'Can you diagnose and fix data skew?', href: '/pills/quiz-pill-5' },
-  { topic: 'Cache, Persist & Checkpoint', tagline: 'Can you navigate the lineage trap?', href: '/pills/quiz-pill-6' },
-  { topic: 'Spark UI', tagline: 'Can you read the Spark UI?', href: '/pills/quiz-pill-7' },
-  { topic: 'Iceberg Pitfalls', tagline: 'Do you know the hidden costs of Iceberg?', href: '/pills/quiz-pill-8' },
-  { topic: 'Streaming & State', tagline: 'Do you understand the state problem?', href: '/pills/quiz-pill-9' }
-];
-
-const semanticLayerQuizzes: QuizLink[] = [
-  { topic: 'Zero Context', tagline: 'What zero context actually breaks.', href: '/pills/semantic-layer-quiz-0' },
-  { topic: 'Column Descriptions', tagline: 'Does the model actually see your docs?', href: '/pills/semantic-layer-quiz-1' },
-  { topic: 'Doc Blocks & Grain', tagline: 'Governance vs. coverage.', href: '/pills/semantic-layer-quiz-2' },
-  { topic: 'Routing', tagline: 'A map of where to look.', href: '/pills/semantic-layer-quiz-3' },
-  { topic: 'Access Control', tagline: "Guarantees that can't be bypassed.", href: '/pills/semantic-layer-quiz-4' },
-  { topic: '9 Real Errors', tagline: 'Bugs that never threw an error.', href: '/pills/semantic-layer-quiz-5' }
-];
-
-const streamingQuizzes: QuizLink[] = [
-  { topic: 'Batch vs Streaming', tagline: 'Is batch really the default?', href: '/pills/streaming-quiz-0' },
-  { topic: 'Events vs Messages', tagline: 'Fact or command?', href: '/pills/streaming-quiz-1' },
-  { topic: 'Two Clocks', tagline: 'Which clock do you trust?', href: '/pills/streaming-quiz-2' },
-  { topic: 'Topics vs Queues', tagline: 'Does reading delete it?', href: '/pills/streaming-quiz-3' },
-  { topic: 'Micro-Batching', tagline: 'Is every 10 minutes streaming?', href: '/pills/streaming-quiz-4' },
-  { topic: 'State Bottleneck', tagline: 'Where does the memory live?', href: '/pills/streaming-quiz-5' },
-  { topic: 'Windows', tagline: 'Which window, and why?', href: '/pills/streaming-quiz-6' },
-  { topic: 'Late Events', tagline: 'Drop it, or fix it?', href: '/pills/streaming-quiz-7' },
-  { topic: 'Streaming Joins', tagline: "What's the memory budget?", href: '/pills/streaming-quiz-8' },
-  { topic: 'Three Questions', tagline: 'Run the checklist.', href: '/pills/streaming-quiz-9' }
-];
-
-const seriesGroups = [
-  { name: 'Spark Pills', seriesHref: '/blog/spark-pills', quizzes: sparkQuizzes },
-  { name: 'Semantic Layer Pills', seriesHref: '/blog/semantic-layer-pills', quizzes: semanticLayerQuizzes },
-  { name: 'Streaming Pills Fundamentals', seriesHref: '/blog/streaming-pills', quizzes: streamingQuizzes }
-];
-
-const totalQuizzes = seriesGroups.reduce((sum, g) => sum + g.quizzes.length, 0);
+import SeriesCard from '../../components/SeriesCard.astro';
 ---
 
 <BaseLayout
@@ -57,37 +9,43 @@ const totalQuizzes = seriesGroups.reduce((sum, g) => sum + g.quizzes.length, 0);
 >
   <div class="container page-container">
     <div class="page-header">
-      <div class="badge badge-purple" style="margin-bottom: 0.8rem;">{totalQuizzes} Quizzes</div>
+      <div class="badge badge-purple" style="margin-bottom: 0.8rem;">26 Quizzes · 3 Series</div>
       <h1>Test What You've <span class="gradient-text-alt">Learned</span></h1>
       <p class="page-subtitle">
-        One quiz per pill, across every series on this site. Each one checks whether the
+        Pick a series to see its quizzes. Each pill has one quiz that checks whether the
         reasoning actually stuck, not just whether you can recall a keyword.
       </p>
     </div>
 
-    {seriesGroups.map(group => (
-      <section class="quiz-series">
-        <div class="series-heading">
-          <h2>{group.name}</h2>
-          <a href={group.seriesHref} class="btn btn-secondary btn-sm">Browse the series →</a>
-        </div>
-
-        <ol class="pills-list">
-          {group.quizzes.map((quiz, i) => (
-            <li class="pill-item">
-              <a href={quiz.href} class="pill-link">
-                <span class="pill-index">{String(i).padStart(2, '0')}</span>
-                <div class="pill-body">
-                  <h3 class="pill-title">{quiz.topic}</h3>
-                  <p class="pill-description">{quiz.tagline}</p>
-                </div>
-                <span class="pill-arrow" aria-hidden="true">→</span>
-              </a>
-            </li>
-          ))}
-        </ol>
-      </section>
-    ))}
+    <div class="cards-grid">
+      <SeriesCard
+        title="Spark Pills Quizzes"
+        description="10 quizzes, one per pill: MapReduce, the DAG, shuffle, joins, skew, caching, the Spark UI, Iceberg, and streaming."
+        count={10}
+        countLabel="quizzes"
+        badgeLabel="Quiz Set"
+        footerLabel="View quizzes →"
+        href="/pills/spark-quizzes"
+      />
+      <SeriesCard
+        title="Semantic Layer Pills Quizzes"
+        description="6 quizzes, one per pill: zero context, column descriptions, business logic, routing, access control, and real errors."
+        count={6}
+        countLabel="quizzes"
+        badgeLabel="Quiz Set"
+        footerLabel="View quizzes →"
+        href="/pills/semantic-layer-quizzes"
+      />
+      <SeriesCard
+        title="Streaming Pills Quizzes"
+        description="10 quizzes, one per pill: events vs messages, event time, logs vs queues, state, windows, late data, and streaming joins."
+        count={10}
+        countLabel="quizzes"
+        badgeLabel="Quiz Set"
+        footerLabel="View quizzes →"
+        href="/pills/streaming-quizzes"
+      />
+    </div>
   </div>
 </BaseLayout>
 
@@ -112,99 +70,10 @@ const totalQuizzes = seriesGroups.reduce((sum, g) => sum + g.quizzes.length, 0);
     line-height: 1.7;
   }
 
-  .quiz-series {
-    margin-bottom: 3rem;
-  }
-
-  .quiz-series:last-child {
-    margin-bottom: 0;
-  }
-
-  .series-heading {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    margin-bottom: 1.25rem;
-    padding-bottom: 0.85rem;
-    border-bottom: 1px solid var(--border-color);
-  }
-
-  .series-heading h2 {
-    font-size: 1.3rem;
-  }
-
-  .pills-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.9rem;
-    list-style: none;
-  }
-
-  .pill-item {
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-sm);
-    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-  }
-
-  .pill-item:hover {
-    transform: translateY(-2px);
-    border-color: var(--border-color-hover);
-    box-shadow: var(--shadow-hover);
-  }
-
-  .pill-link {
-    display: flex;
-    align-items: center;
-    gap: 1.25rem;
-    padding: 1.15rem 1.4rem;
-    color: inherit;
-  }
-
-  .pill-link:hover {
-    color: inherit;
-  }
-
-  .pill-index {
-    flex-shrink: 0;
-    font-family: var(--font-mono);
-    font-size: 1.4rem;
-    font-weight: 600;
-    color: var(--accent-indigo);
-    width: 2.4rem;
-    text-align: center;
-  }
-
-  .pill-body {
-    flex-grow: 1;
-    min-width: 0;
-  }
-
-  .pill-title {
-    font-size: 1.02rem;
-    font-weight: 600;
-    margin-bottom: 0.3rem;
-    line-height: 1.4;
-  }
-
-  .pill-description {
-    color: var(--text-muted);
-    font-size: 0.88rem;
-    line-height: 1.5;
-  }
-
-  .pill-arrow {
-    flex-shrink: 0;
-    color: var(--text-dim);
-    font-size: 1.1rem;
-    transition: transform 0.15s ease, color 0.15s ease;
-  }
-
-  .pill-item:hover .pill-arrow {
-    color: var(--accent-indigo);
-    transform: translateX(3px);
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.4rem;
   }
 
   @media (max-width: 640px) {
@@ -212,17 +81,8 @@ const totalQuizzes = seriesGroups.reduce((sum, g) => sum + g.quizzes.length, 0);
       padding-top: 2rem;
       padding-bottom: 3rem;
     }
-    .series-heading {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 0.6rem;
-    }
-    .pill-link {
-      flex-wrap: wrap;
-      gap: 0.6rem 1rem;
-    }
-    .pill-arrow {
-      display: none;
+    .cards-grid {
+      grid-template-columns: 1fr;
     }
   }
 </style>
