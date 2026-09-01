@@ -3,10 +3,10 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import MermaidDiagram from '../../components/MermaidDiagram.astro';
 import { getCollection } from 'astro:content';
 
-const posts = await getCollection('blog', ({ data }) => data.category === 'Spark Pills');
+const posts = await getCollection('blog', ({ data }) => data.category === 'Streaming Pills');
 
 function pillNumber(slug: string): number {
-  const match = slug.match(/spark-pill-(\d+)/);
+  const match = slug.match(/streaming-pill-(\d+)/);
   return match ? parseInt(match[1], 10) : 0;
 }
 
@@ -15,36 +15,38 @@ const sortedPosts = posts.sort((a, b) => pillNumber(a.slug) - pillNumber(b.slug)
 const seriesMap = `flowchart TD
     subgraph F["Foundations"]
         direction LR
-        P0["0 · Why not Pandas"] --> P1["1 · MapReduce"] --> P2["2 · DAG & Lazy Eval"]
+        P0["0 · Batch = Special Case"] --> P1["1 · Events vs Messages"] --> P2["2 · Two Clocks"]
     end
-    subgraph E["Execution Internals"]
+    subgraph L["Log-Based Processing"]
         direction LR
-        P3["3 · Shuffle"] --> P4["4 · Join Strategies"] --> P5["5 · Data Skew"]
+        P3["3 · Topics vs Queues"] --> P4["4 · Micro-batching Fails"]
     end
-    subgraph O["Running It"]
+    subgraph S["State & Time"]
         direction LR
-        P6["6 · Cache / Persist / Checkpoint"] --> P7["7 · Spark UI"]
+        P5["5 · Stateful Engines"] --> P6["6 · Windows"] --> P7["7 · Late Events"]
     end
-    subgraph S["Storage & Streaming"]
+    subgraph D["Design Decisions"]
         direction LR
-        P8["8 · Iceberg Pitfalls"] --> P9["9 · Streaming & State"]
+        P8["8 · Joins"] --> P9["9 · Three Questions"]
     end
-    F --> E --> O --> S`;
+    F --> L --> S --> D`;
 ---
 
 <BaseLayout
-  title="Spark Pills Series | Morad Abaz"
-  description="A 10-part series that demystifies Spark internals, one real question at a time: MapReduce, the DAG, shuffle, joins, skew, caching, the Spark UI, Iceberg, and streaming."
+  title="Streaming Pills Series | Morad Abaz"
+  description="A 10-part series on streaming fundamentals, synthesized from Kleppmann's Designing Data-Intensive Applications and two production write-ups: events vs messages, event time, logs vs queues, state, windows, late data, and streaming joins."
 >
   <div class="container page-container">
     <a href="/blog" class="back-link">← Back to Articles</a>
 
     <div class="page-header">
       <div class="badge badge-series" style="margin-bottom: 0.8rem;">Series · 10 parts</div>
-      <h1>Spark <span class="gradient-text">Pills</span></h1>
+      <h1>Streaming Pills <span class="gradient-text">Fundamentals</span></h1>
       <p class="page-subtitle">
-        A series for data engineers who can run PySpark jobs but want to understand what happens
-        underneath. Each pill starts from a real question and each has a quiz to check what stuck.
+        A series for data engineers who want to understand streaming from first principles, not
+        as "batch, but faster." Synthesized from Martin Kleppmann's <em>Designing Data-Intensive
+        Applications</em> and two production write-ups on stream processing. Each pill starts from
+        a real question.
       </p>
     </div>
 

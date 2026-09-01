@@ -1,0 +1,176 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Quiz from '../../components/Quiz.astro';
+
+const questions = [
+  {
+    question: "A script processes '10:00 to 10:10' using processing time. What goes wrong?",
+    options: [
+      "Nothing, processing time is always safe to bucket by",
+      "Every event delayed by the network lands in the wrong bucket, no matter how short the interval is",
+      "The script runs out of memory immediately",
+      "It only affects session windows"
+    ],
+    correct: 1,
+    explanation: "Bucketing by processing time misplaces any event that was delayed, regardless of how short the batch interval is. The interval length does not fix a clock problem."
+  },
+  {
+    question: "If the same script switches to event time instead, what new problem appears?",
+    options: [
+      "None, event time solves everything for free",
+      "It may need to reopen and recompute previous runs whenever a late event arrives, so it stops being a simple 'last 10 minutes' job",
+      "It can no longer read from Kafka",
+      "It becomes faster than a true streaming engine"
+    ],
+    correct: 1,
+    explanation: "Using event time correctly means the script has to be able to revisit and recompute earlier windows when late data shows up, which is exactly the complexity a real streaming engine is built to handle."
+  },
+  {
+    question: "Why does a micro-batch script computing 'unique users today' get more expensive as the day goes on?",
+    options: [
+      "Because Postgres locks the table after noon",
+      "Because it re-reads everything from midnight to now on every run, instead of keeping incremental state",
+      "Because Kafka topics shrink over time",
+      "Because the schema changes every 10 minutes"
+    ],
+    correct: 1,
+    explanation: "Without incremental state, a cumulative metric forces the script to rescan the whole day so far, every single run, so the cost grows as the day progresses."
+  },
+  {
+    question: "How does a real streaming engine avoid the growing rescan cost described above?",
+    options: [
+      "It keeps live intermediate state and updates it incrementally, one event at a time",
+      "It deletes old data at the end of each day",
+      "It runs the exact same script, just on a faster machine",
+      "It skips users who were already counted yesterday"
+    ],
+    correct: 0,
+    explanation: "A streaming engine updates its running total incrementally as each event arrives, instead of recomputing the whole history on a schedule."
+  },
+  {
+    question: "For a fraud alert or a temperature alarm, what is the risk of waiting for the next scheduled batch run?",
+    options: [
+      "There is no risk, alerts are never time sensitive",
+      "The reaction can arrive too late to matter",
+      "The alert will be duplicated across every run",
+      "The alert will be sent to the wrong topic"
+    ],
+    correct: 1,
+    explanation: "Time-sensitive reactions need to happen close to the moment the condition occurs. Waiting for the next scheduled run can make the alert useless by the time it fires."
+  },
+  {
+    question: "According to this pill, do these three problems (boundaries, growing state cost, latency and idempotency) get smaller if you shorten the batch interval to 1 minute?",
+    options: [
+      "Yes, a short enough interval eliminates all three",
+      "No, they are architectural problems, not a matter of running more often",
+      "Only the latency problem improves",
+      "Only the state cost problem improves"
+    ],
+    correct: 1,
+    explanation: "None of these three problems are about speed. They come from the architecture itself: which clock is trusted, whether state is kept incrementally, and whether correctness guarantees are built in."
+  }
+];
+---
+
+<BaseLayout
+  title="Quiz: Micro-Batching | Streaming Pill 4"
+  description="Test your understanding of why a scheduled script is not the same as streaming, and the three problems that prove it."
+>
+  <section class="pill-quiz-page">
+    <div class="container">
+      <a href="/blog/streaming-pill-4-micro-batching-is-not-streaming" class="back-link">← Back to Pill 4</a>
+
+      <div class="pill-header">
+        <div class="badge badge-series" style="margin-bottom: 0.5rem;">Pill 4 · Micro-Batching</div>
+        <h1>Quiz: Is Every 10 Minutes Streaming?</h1>
+        <p class="pill-lead">
+          These questions test whether you can name the three concrete problems a scheduled
+          script runs into, not just repeat that "micro-batching is bad."
+        </p>
+      </div>
+
+      <Quiz
+        title="Pill 4: Micro-Batching Is Not Streaming"
+        questions={questions}
+      />
+
+      <div class="pill-footer glass-card">
+        <h3>How did it go?</h3>
+        <p>
+          If you scored below 70%, re-read <strong>Pill 4</strong>, and think of a scheduled
+          script you have seen in production. Which of the three problems would it hit first?
+        </p>
+        <div class="pill-footer-links">
+          <a href="/blog/streaming-pill-4-micro-batching-is-not-streaming" class="btn btn-secondary btn-sm">Re-read Pill 4</a>
+          <a href="/pills/streaming-quiz-5" class="btn btn-primary btn-sm">Next: Pill 5 Quiz — State Bottleneck</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .pill-quiz-page {
+    padding: 3.5rem 0 5rem;
+  }
+
+  .back-link {
+    display: inline-block;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.8rem;
+    transition: color 0.2s ease;
+  }
+  .back-link:hover {
+    color: var(--accent-blue);
+  }
+
+  .badge-series {
+    background: var(--accent-blue);
+    color: #ffffff;
+  }
+
+  .pill-header {
+    max-width: 720px;
+    margin-bottom: 2rem;
+  }
+
+  .pill-header h1 {
+    font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+    margin-bottom: 0.8rem;
+    line-height: 1.3;
+  }
+
+  .pill-lead {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+    max-width: 640px;
+  }
+
+  .pill-footer {
+    margin-top: 2.5rem;
+    padding: 2rem;
+    background: var(--bg-card);
+  }
+
+  .pill-footer h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-main);
+  }
+
+  .pill-footer p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.7;
+    margin-bottom: 1.1rem;
+    max-width: 600px;
+  }
+
+  .pill-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+</style>

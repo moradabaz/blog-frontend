@@ -1,0 +1,176 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Quiz from '../../components/Quiz.astro';
+
+const questions = [
+  {
+    question: "What is event time?",
+    options: [
+      "The moment your server received and processed the event",
+      "The moment something actually happened in the real world, stored as a field inside the event",
+      "The average delay across all events in a topic",
+      "A timestamp assigned by the consumer when it finishes processing"
+    ],
+    correct: 1,
+    explanation: "Event time lives inside the event itself, as an immutable field, and marks when it actually happened, not when anyone found out about it."
+  },
+  {
+    question: "What is processing time?",
+    options: [
+      "The moment something happened in the real world",
+      "The moment your infrastructure observed and handled the event, which shifts with network delay",
+      "A timestamp that never changes once set",
+      "The time it takes to run a batch job"
+    ],
+    correct: 1,
+    explanation: "Processing time depends on when your system happens to see the event, so it moves with every network delay or outage."
+  },
+  {
+    question: "A purchase happens at 14:58 but reaches the server at 15:02. If the pipeline buckets it by processing time, what happens?",
+    options: [
+      "Nothing, both timestamps always produce the same bucket",
+      "It lands in the 15:00-16:00 window instead of the correct 14:00-15:00 window",
+      "The event is automatically discarded",
+      "The event is duplicated into both windows"
+    ],
+    correct: 1,
+    explanation: "Trusting processing time here misplaces the purchase into the wrong hourly bucket, which is exactly wrong if the business needs an accurate cutoff."
+  },
+  {
+    question: "Why does this pill call late and out-of-order events 'not an edge case'?",
+    options: [
+      "Because they only happen during outages",
+      "Because distributed systems run on unstable networks by default, so this happens under normal operating conditions",
+      "Because Kafka refuses to accept late events",
+      "Because it only affects sliding windows"
+    ],
+    correct: 1,
+    explanation: "Networks are inherently unstable. Late and out-of-order events are a normal condition to design for, not a rare failure mode."
+  },
+  {
+    question: "Why doesn't running a batch script every 1 minute instead of every 10 minutes fix the event time vs processing time problem?",
+    options: [
+      "It does fix it, shorter intervals always solve the issue",
+      "The problem is architectural, about which clock you trust, not about how often the script runs",
+      "Because 1-minute scripts are technically impossible",
+      "Because Kafka does not support 1-minute intervals"
+    ],
+    correct: 1,
+    explanation: "A shorter interval does not change which clock the script trusts. If it still buckets by processing time, delayed events still land in the wrong bucket."
+  },
+  {
+    question: "What does the calibration formula Calibrated Event Time = Device Event Time + (Server Receive Time − Device Send Time) correct for?",
+    options: [
+      "Compression errors in the event payload",
+      "Drift and unreliability in device clocks, by adjusting the event time using the observed network offset",
+      "The size of the reference table in a stream-to-table join",
+      "The number of partitions a topic should have"
+    ],
+    correct: 1,
+    explanation: "Mobile device clocks drift. This formula uses the gap between when the server received an event and when the device says it sent it, to correct the reported event time before trusting it."
+  }
+];
+---
+
+<BaseLayout
+  title="Quiz: Event Time vs Processing Time | Streaming Pill 2"
+  description="Test your understanding of why event time and processing time are different clocks, and why only one of them is safe to trust for correctness."
+>
+  <section class="pill-quiz-page">
+    <div class="container">
+      <a href="/blog/streaming-pill-2-event-time-vs-processing-time" class="back-link">← Back to Pill 2</a>
+
+      <div class="pill-header">
+        <div class="badge badge-series" style="margin-bottom: 0.5rem;">Pill 2 · Two Clocks</div>
+        <h1>Quiz: Which Clock Do You Trust?</h1>
+        <p class="pill-lead">
+          These questions test whether you understand why event time and processing time
+          disagree, and what happens when a pipeline trusts the wrong one.
+        </p>
+      </div>
+
+      <Quiz
+        title="Pill 2: Event Time and Processing Time"
+        questions={questions}
+      />
+
+      <div class="pill-footer glass-card">
+        <h3>How did it go?</h3>
+        <p>
+          If you scored below 70%, re-read <strong>Pill 2</strong>, and think through what
+          happens to a delayed mobile event in a pipeline you know, whichever clock it uses today.
+        </p>
+        <div class="pill-footer-links">
+          <a href="/blog/streaming-pill-2-event-time-vs-processing-time" class="btn btn-secondary btn-sm">Re-read Pill 2</a>
+          <a href="/pills/streaming-quiz-3" class="btn btn-primary btn-sm">Next: Pill 3 Quiz — Topics vs Queues</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .pill-quiz-page {
+    padding: 3.5rem 0 5rem;
+  }
+
+  .back-link {
+    display: inline-block;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.8rem;
+    transition: color 0.2s ease;
+  }
+  .back-link:hover {
+    color: var(--accent-blue);
+  }
+
+  .badge-series {
+    background: var(--accent-blue);
+    color: #ffffff;
+  }
+
+  .pill-header {
+    max-width: 720px;
+    margin-bottom: 2rem;
+  }
+
+  .pill-header h1 {
+    font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+    margin-bottom: 0.8rem;
+    line-height: 1.3;
+  }
+
+  .pill-lead {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+    max-width: 640px;
+  }
+
+  .pill-footer {
+    margin-top: 2.5rem;
+    padding: 2rem;
+    background: var(--bg-card);
+  }
+
+  .pill-footer h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-main);
+  }
+
+  .pill-footer p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.7;
+    margin-bottom: 1.1rem;
+    max-width: 600px;
+  }
+
+  .pill-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+</style>

@@ -1,0 +1,183 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Quiz from '../../components/Quiz.astro';
+
+const questions = [
+  {
+    question: "What is the first question this pill says to ask before designing a streaming system?",
+    options: [
+      "Which cloud provider offers the cheapest storage",
+      "Does this pipeline need aggregates over time, like moving averages or windowed counts",
+      "How many engineers are available to build it",
+      "Which programming language the team prefers"
+    ],
+    correct: 1,
+    explanation: "The first fork in the road is whether the use case needs state at all. Everything else in the checklist only matters if the answer is yes."
+  },
+  {
+    question: "If the answer to question 1 is 'no', what does this pill recommend?",
+    options: [
+      "Build a full Flink cluster regardless, to future-proof the system",
+      "A simple stateless setup like Lambda or a scheduled script is genuinely fine",
+      "Always default to Kafka Streams",
+      "Redesign the use case until it needs state"
+    ],
+    correct: 1,
+    explanation: "If there is no need for memory across events, reaching for a stateful streaming engine would be unnecessary complexity. A stateless setup is the right tool there."
+  },
+  {
+    question: "What does question 2 (tolerance for late data) decide?",
+    options: [
+      "Whether to use tumbling or sliding windows only",
+      "Whether a simple drop-and-log policy is enough, or the more expensive reopen-and-correct approach is required",
+      "How many partitions the topic should have",
+      "Whether the pipeline needs a schema registry"
+    ],
+    correct: 1,
+    explanation: "The business's tolerance for occasional undercounts is what decides between a cheap drop policy and a more expensive update-and-correct policy."
+  },
+  {
+    question: "Who should answer question 2, according to this pill?",
+    options: [
+      "The business, since it is a decision about acceptable risk, not an engineering preference",
+      "Whoever is on call that week",
+      "The cloud provider's default settings",
+      "The original author of the source system"
+    ],
+    correct: 0,
+    explanation: "This is a risk and cost decision, not a technical one, so it belongs with whoever owns the business impact of the metric being wrong."
+  },
+  {
+    question: "What does question 3 (clock reliability) ask you to check before trusting event-time windows?",
+    options: [
+      "Whether the topic has enough partitions",
+      "The gap between when the server received an event and when the device says it sent it, to calibrate for drift",
+      "Whether the consumer group has committed its offsets",
+      "Whether the database supports foreign keys"
+    ],
+    correct: 1,
+    explanation: "Device clocks are not always trustworthy, so measuring the offset between server receive time and device send time lets you calibrate event time before relying on it."
+  },
+  {
+    question: "According to this pill, what happens when a stateful streaming workload is forced onto a serverless, stateless architecture?",
+    options: [
+      "It runs a little slower but produces correct results",
+      "It produces incorrect numbers quietly, one database query at a time, until someone downstream notices",
+      "It fails loudly and immediately with a clear error",
+      "It automatically converts itself into a Flink job"
+    ],
+    correct: 1,
+    explanation: "The failure here is not a crash, it is a quiet accumulation of wrong numbers, which is exactly what makes forcing the wrong paradigm dangerous rather than just inefficient."
+  }
+];
+---
+
+<BaseLayout
+  title="Quiz: Three Questions Before You Design a Streaming System | Streaming Pill 9"
+  description="Test whether you can run the closing checklist: is it stateful, what is the late-data tolerance, and can you trust the clocks."
+>
+  <section class="pill-quiz-page">
+    <div class="container">
+      <a href="/blog/streaming-pill-9-three-questions" class="back-link">← Back to Pill 9</a>
+
+      <div class="pill-header">
+        <div class="badge badge-series" style="margin-bottom: 0.5rem;">Pill 9 · Three Questions</div>
+        <h1>Quiz: Run the Checklist</h1>
+        <p class="pill-lead">
+          These questions test whether you can apply the three-question framework to a new
+          use case, not just recite the questions in order.
+        </p>
+      </div>
+
+      <Quiz
+        title="Pill 9: Three Questions Before You Design a Streaming System"
+        questions={questions}
+      />
+
+      <div class="pill-footer glass-card">
+        <h3>Series complete!</h3>
+        <p>
+          You have reached the end of the Streaming Pills series. If you worked through all
+          10 pills and their quizzes, you now have a checklist you can run against any
+          "should this be a stream?" question: whether it needs state, what its tolerance for
+          late data is, and whether its clocks can be trusted.
+        </p>
+        <p>
+          The goal was never to memorize Flink APIs. It was to build the reasoning that tells
+          you, for a specific use case, which side of the batch and streaming boundary it falls
+          on, and why.
+        </p>
+        <div class="pill-footer-links">
+          <a href="/blog/streaming-pill-9-three-questions" class="btn btn-secondary btn-sm">Re-read Pill 9</a>
+          <a href="/blog/streaming-pills" class="btn btn-primary btn-sm">Back to the full series</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .pill-quiz-page {
+    padding: 3.5rem 0 5rem;
+  }
+
+  .back-link {
+    display: inline-block;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.8rem;
+    transition: color 0.2s ease;
+  }
+  .back-link:hover {
+    color: var(--accent-blue);
+  }
+
+  .badge-series {
+    background: var(--accent-blue);
+    color: #ffffff;
+  }
+
+  .pill-header {
+    max-width: 720px;
+    margin-bottom: 2rem;
+  }
+
+  .pill-header h1 {
+    font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+    margin-bottom: 0.8rem;
+    line-height: 1.3;
+  }
+
+  .pill-lead {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+    max-width: 640px;
+  }
+
+  .pill-footer {
+    margin-top: 2.5rem;
+    padding: 2rem;
+    background: var(--bg-card);
+  }
+
+  .pill-footer h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-main);
+  }
+
+  .pill-footer p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.7;
+    margin-bottom: 1.1rem;
+    max-width: 600px;
+  }
+
+  .pill-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+</style>

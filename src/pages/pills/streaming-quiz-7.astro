@@ -1,0 +1,176 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Quiz from '../../components/Quiz.astro';
+
+const questions = [
+  {
+    question: "What is a straggler event?",
+    options: [
+      "An event that arrives after the window it belongs to has already closed",
+      "An event with no timestamp at all",
+      "An event that gets duplicated across two consumers",
+      "An event rejected because it failed schema validation"
+    ],
+    correct: 0,
+    explanation: "A straggler is simply an event that shows up late, after its window has already produced a result."
+  },
+  {
+    question: "When is the drop policy for late events appropriate?",
+    options: [
+      "Only for financial transactions",
+      "For non-critical analytical metrics where a small margin of error is acceptable and reopening a closed window is not worth the cost",
+      "Whenever the event is more than 1 second late",
+      "Only when using tumbling windows"
+    ],
+    correct: 1,
+    explanation: "Dropping and logging fits low-stakes metrics, like page view counts, where a small, occasional undercount does not justify the cost of reopening windows."
+  },
+  {
+    question: "What does the update (retract and correct) policy actually do?",
+    options: [
+      "It silently ignores the late event",
+      "It reopens the closed window, recalculates the aggregate with the late event, and emits a correction downstream",
+      "It deletes the entire day's data and restarts",
+      "It moves the late event to a different topic without processing it"
+    ],
+    correct: 1,
+    explanation: "Update policies reopen the affected window, redo the calculation including the late event, and push a corrected result downstream."
+  },
+  {
+    question: "Why is the update policy mandatory for something like billing reconciliation?",
+    options: [
+      "Because billing systems cannot use tumbling windows",
+      "Because accuracy is non-negotiable, an undercounted or wrong total is not acceptable",
+      "Because billing events are never late in practice",
+      "Because it is cheaper than the drop policy"
+    ],
+    correct: 1,
+    explanation: "Financial totals need to be exactly right, so silently dropping a late payment event is not an acceptable trade-off."
+  },
+  {
+    question: "What is the real cost of choosing the update policy everywhere?",
+    options: [
+      "None, it is always strictly better than dropping",
+      "The system must be able to reopen any window within an allowed lateness threshold, which increases state size and downstream complexity",
+      "It requires switching from Kafka to a traditional queue",
+      "It removes the need for event time entirely"
+    ],
+    correct: 1,
+    explanation: "Supporting corrections means keeping windows reopenable for longer, which grows the state the system has to hold and adds complexity for every downstream consumer."
+  },
+  {
+    question: "Who should decide the lateness policy for a given pipeline, according to this pill?",
+    options: [
+      "The engineering team, based purely on what is easiest to implement",
+      "The business, since the decision is about acceptable risk and cost, not a technical preference",
+      "Whoever wrote the original Kafka topic",
+      "It should always default to drop, regardless of the use case"
+    ],
+    correct: 1,
+    explanation: "This is a business call about how much risk of undercounting is acceptable, weighed against the cost of supporting corrections."
+  }
+];
+---
+
+<BaseLayout
+  title="Quiz: Late Events | Streaming Pill 7"
+  description="Test your understanding of when to drop a late event and when to reopen the window and correct it."
+>
+  <section class="pill-quiz-page">
+    <div class="container">
+      <a href="/blog/streaming-pill-7-late-events" class="back-link">← Back to Pill 7</a>
+
+      <div class="pill-header">
+        <div class="badge badge-series" style="margin-bottom: 0.5rem;">Pill 7 · Late Events</div>
+        <h1>Quiz: Drop It, or Fix It?</h1>
+        <p class="pill-lead">
+          These questions test whether you know which lateness policy fits which use case, and
+          who should be the one deciding.
+        </p>
+      </div>
+
+      <Quiz
+        title="Pill 7: What to Do With a Late Event"
+        questions={questions}
+      />
+
+      <div class="pill-footer glass-card">
+        <h3>How did it go?</h3>
+        <p>
+          If you scored below 70%, re-read <strong>Pill 7</strong>, and think of one metric at
+          your job that could tolerate dropped late data, and one that could not.
+        </p>
+        <div class="pill-footer-links">
+          <a href="/blog/streaming-pill-7-late-events" class="btn btn-secondary btn-sm">Re-read Pill 7</a>
+          <a href="/pills/streaming-quiz-8" class="btn btn-primary btn-sm">Next: Pill 8 Quiz — Streaming Joins</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .pill-quiz-page {
+    padding: 3.5rem 0 5rem;
+  }
+
+  .back-link {
+    display: inline-block;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.8rem;
+    transition: color 0.2s ease;
+  }
+  .back-link:hover {
+    color: var(--accent-blue);
+  }
+
+  .badge-series {
+    background: var(--accent-blue);
+    color: #ffffff;
+  }
+
+  .pill-header {
+    max-width: 720px;
+    margin-bottom: 2rem;
+  }
+
+  .pill-header h1 {
+    font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+    margin-bottom: 0.8rem;
+    line-height: 1.3;
+  }
+
+  .pill-lead {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+    max-width: 640px;
+  }
+
+  .pill-footer {
+    margin-top: 2.5rem;
+    padding: 2rem;
+    background: var(--bg-card);
+  }
+
+  .pill-footer h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-main);
+  }
+
+  .pill-footer p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.7;
+    margin-bottom: 1.1rem;
+    max-width: 600px;
+  }
+
+  .pill-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+</style>

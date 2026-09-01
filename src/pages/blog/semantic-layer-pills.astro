@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import MermaidDiagram from '../../components/MermaidDiagram.astro';
 import { getCollection } from 'astro:content';
 
 const posts = await getCollection('blog', ({ data }) => data.category === 'Semantic Layer Pills');
@@ -10,6 +11,10 @@ function pillNumber(slug: string): number {
 }
 
 const sortedPosts = posts.sort((a, b) => pillNumber(a.slug) - pillNumber(b.slug));
+
+const seriesMap = `flowchart LR
+    P0["0 · Zero Context"] --> P1["1 · Column Descriptions"] --> P2["2 · Business Logic & Grain"] --> P3["3 · Routing"] --> P4["4 · Access Control"]
+    P4 -.->|lessons learned| P5["5 · 9 Real Errors"]`;
 ---
 
 <BaseLayout
@@ -28,6 +33,11 @@ const sortedPosts = posts.sort((a, b) => pillNumber(a.slug) - pillNumber(b.slug)
         piece of context, no context, descriptions, business logic, routing, access control, and
         checks whether it actually stops the model from getting things wrong.
       </p>
+    </div>
+
+    <div class="series-map glass-card">
+      <p class="series-map-label">Series map</p>
+      <MermaidDiagram code={seriesMap} />
     </div>
 
     <ol class="pills-list">
@@ -88,6 +98,21 @@ const sortedPosts = posts.sort((a, b) => pillNumber(a.slug) - pillNumber(b.slug)
     font-size: 1rem;
     color: var(--text-muted);
     line-height: 1.7;
+  }
+
+  .series-map {
+    margin-bottom: 2.25rem;
+    padding: 1.25rem 1.4rem;
+    background: var(--bg-subtle);
+  }
+
+  .series-map-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-dim);
+    margin-bottom: 0.4rem;
   }
 
   .pills-list {

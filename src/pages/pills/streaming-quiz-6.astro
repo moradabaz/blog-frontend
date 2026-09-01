@@ -1,0 +1,176 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Quiz from '../../components/Quiz.astro';
+
+const questions = [
+  {
+    question: "What is a tumbling window?",
+    options: [
+      "A window defined by user activity instead of a fixed clock",
+      "A fixed, non-overlapping interval, like every hour from 10:00 to 11:00",
+      "A window that moves continuously and updates every few seconds",
+      "A window that never closes"
+    ],
+    correct: 1,
+    explanation: "Tumbling windows are fixed-size, back-to-back intervals with no overlap, simple to reason about, but with edge effects at the boundary."
+  },
+  {
+    question: "What is the main trade-off of a tumbling window?",
+    options: [
+      "It uses more memory than any other window type",
+      "An event right at the boundary can get split from a related event just seconds away, diluting the correlation",
+      "It cannot be used for hourly business reports",
+      "It requires session tracking"
+    ],
+    correct: 1,
+    explanation: "Two related actions that happen a second apart but straddle the boundary end up counted in two separate windows, which weakens the connection between them."
+  },
+  {
+    question: "What is a sliding window good for, and what does it cost?",
+    options: [
+      "Good for user session analysis, costs almost no memory",
+      "Good for monitoring and alerting on a moving range like 'last 10 minutes', but costs more memory because a single event can belong to multiple overlapping windows at once",
+      "Good for one-time historical reports, costs nothing extra",
+      "Good only for stream-to-table joins"
+    ],
+    correct: 1,
+    explanation: "Sliding windows overlap by design, which is great for catching moving patterns, but it means the engine has to store and process each event multiple times."
+  },
+  {
+    question: "What defines when a session window closes?",
+    options: [
+      "A fixed clock boundary, like the top of every hour",
+      "A configurable gap of inactivity after the last event in that session",
+      "The moment the 100th event arrives",
+      "Whenever the producer sends a close signal"
+    ],
+    correct: 1,
+    explanation: "A session opens on the first event and stays open until the user goes quiet for longer than the configured timeout."
+  },
+  {
+    question: "Why is a session window the most expensive of the three types described here?",
+    options: [
+      "It requires the most CPU per event",
+      "It can only be closed in hindsight, so the system may need to keep state open for every active user for a long time",
+      "It always uses more partitions than tumbling or sliding windows",
+      "It cannot be implemented in Flink"
+    ],
+    correct: 1,
+    explanation: "Since a session can't be declared closed until the inactivity gap has actually passed, the engine has to keep potentially long-lived state open per user."
+  },
+  {
+    question: "According to this pill, what question does every window type ultimately answer differently?",
+    options: [
+      "Which programming language to use for the pipeline",
+      "How much memory you are willing to spend versus how much edge-case accuracy you are willing to give up",
+      "Whether to use Kafka or Kinesis as the broker",
+      "Whether the data should be stored in Parquet or JSON"
+    ],
+    correct: 1,
+    explanation: "Tumbling, sliding, and session windows are three different answers to the same trade-off between memory cost and how accurately edge cases are captured."
+  }
+];
+---
+
+<BaseLayout
+  title="Quiz: Windows Are a Design Decision | Streaming Pill 6"
+  description="Test your understanding of tumbling, sliding, and session windows, and why each one is a chosen trade-off, not a fact in the data."
+>
+  <section class="pill-quiz-page">
+    <div class="container">
+      <a href="/blog/streaming-pill-6-windows-are-a-design-decision" class="back-link">← Back to Pill 6</a>
+
+      <div class="pill-header">
+        <div class="badge badge-series" style="margin-bottom: 0.5rem;">Pill 6 · Windows</div>
+        <h1>Quiz: Which Window, and Why?</h1>
+        <p class="pill-lead">
+          These questions test whether you can match a window type to its trade-off, not just
+          recite the three names.
+        </p>
+      </div>
+
+      <Quiz
+        title="Pill 6: Windows Are a Design Decision"
+        questions={questions}
+      />
+
+      <div class="pill-footer glass-card">
+        <h3>How did it go?</h3>
+        <p>
+          If you scored below 70%, re-read <strong>Pill 6</strong>, and pick a metric you know
+          well. Which window type would you choose for it, and what would you be giving up?
+        </p>
+        <div class="pill-footer-links">
+          <a href="/blog/streaming-pill-6-windows-are-a-design-decision" class="btn btn-secondary btn-sm">Re-read Pill 6</a>
+          <a href="/pills/streaming-quiz-7" class="btn btn-primary btn-sm">Next: Pill 7 Quiz — Late Events</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .pill-quiz-page {
+    padding: 3.5rem 0 5rem;
+  }
+
+  .back-link {
+    display: inline-block;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.8rem;
+    transition: color 0.2s ease;
+  }
+  .back-link:hover {
+    color: var(--accent-blue);
+  }
+
+  .badge-series {
+    background: var(--accent-blue);
+    color: #ffffff;
+  }
+
+  .pill-header {
+    max-width: 720px;
+    margin-bottom: 2rem;
+  }
+
+  .pill-header h1 {
+    font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+    margin-bottom: 0.8rem;
+    line-height: 1.3;
+  }
+
+  .pill-lead {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+    max-width: 640px;
+  }
+
+  .pill-footer {
+    margin-top: 2.5rem;
+    padding: 2rem;
+    background: var(--bg-card);
+  }
+
+  .pill-footer h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-main);
+  }
+
+  .pill-footer p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.7;
+    margin-bottom: 1.1rem;
+    max-width: 600px;
+  }
+
+  .pill-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+</style>

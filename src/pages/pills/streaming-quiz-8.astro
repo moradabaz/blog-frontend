@@ -1,0 +1,176 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Quiz from '../../components/Quiz.astro';
+
+const questions = [
+  {
+    question: "Why can't a streaming join simply match 'everything' the way a batch join can?",
+    options: [
+      "Because streaming engines do not support the JOIN keyword",
+      "Because streams are infinite, so the engine must define how much of each side to keep in memory and for how long",
+      "Because Kafka topics are limited to 24 hours of retention",
+      "Because joins are only possible on primary keys in streaming"
+    ],
+    correct: 1,
+    explanation: "With both sides potentially unbounded, the engine has to bound the problem itself, deciding how much history to hold in memory and for how long, before it can match anything."
+  },
+  {
+    question: "What does a stream-to-stream join do?",
+    options: [
+      "It enriches a stream with a slowly changing reference table using CDC",
+      "It correlates two infinite flows of events within a defined time window, discarding unmatched events once the window expires",
+      "It maintains a full materialized view of two changing tables",
+      "It joins a stream with a static file stored once in S3"
+    ],
+    correct: 1,
+    explanation: "A stream-to-stream join buffers both sides for a window, like 30 minutes, matches events that fall in it, and drops whatever never found a match once that window passes."
+  },
+  {
+    question: "In a stream-to-table join, how does the engine avoid querying an external database on every event?",
+    options: [
+      "It skips enrichment entirely and returns nulls",
+      "It subscribes to the table's change log (CDC) and keeps a local replica in memory, so lookups are local",
+      "It caches only the first 100 rows of the table",
+      "It converts the table into a Kafka topic with no state"
+    ],
+    correct: 1,
+    explanation: "By replicating the reference table locally through its change log, the engine avoids remote queries entirely and gets microsecond-latency lookups."
+  },
+  {
+    question: "What is the memory cost of a table-to-table join, and why?",
+    options: [
+      "It is the cheapest of the three, since tables are usually small",
+      "It is the most expensive, since both full tables have to be kept in state to react to changes on either side",
+      "It has no memory cost, since it never buffers anything",
+      "It only costs memory during the first minute of the join"
+    ],
+    correct: 1,
+    explanation: "A table-to-table join keeps a full materialized view built from both tables, so the memory footprint is the combined size of both, which makes it the most expensive of the three."
+  },
+  {
+    question: "What is the underlying trade-off common to all three join types described in this pill?",
+    options: [
+      "Cost versus number of consumers",
+      "Memory allocation versus query latency",
+      "Number of partitions versus schema complexity",
+      "Compression ratio versus disk usage"
+    ],
+    correct: 1,
+    explanation: "Every one of the three join types trades a bigger memory footprint for lower latency, or the reverse: less memory, but slower or less complete matching."
+  },
+  {
+    question: "What example does the pill use for a stream-to-table join?",
+    options: [
+      "Matching ad impressions with later clicks",
+      "Enriching a live transaction stream with user risk profiles",
+      "Maintaining a user's social feed from posts and followers tables",
+      "Joining two Kafka topics with no reference data at all"
+    ],
+    correct: 1,
+    explanation: "Enriching a live credit card transaction stream with user risk profiles is the pill's example of a stream-to-table join, using a local replica kept in sync via CDC."
+  }
+];
+---
+
+<BaseLayout
+  title="Quiz: Streaming Joins | Streaming Pill 8"
+  description="Test your understanding of stream-to-stream, stream-to-table, and table-to-table joins as memory and latency trade-offs."
+>
+  <section class="pill-quiz-page">
+    <div class="container">
+      <a href="/blog/streaming-pill-8-streaming-joins" class="back-link">← Back to Pill 8</a>
+
+      <div class="pill-header">
+        <div class="badge badge-series" style="margin-bottom: 0.5rem;">Pill 8 · Streaming Joins</div>
+        <h1>Quiz: What's the Memory Budget?</h1>
+        <p class="pill-lead">
+          These questions test whether you can match a join type to its memory and latency
+          trade-off, not just recite three names.
+        </p>
+      </div>
+
+      <Quiz
+        title="Pill 8: Streaming Joins Are a Memory Problem"
+        questions={questions}
+      />
+
+      <div class="pill-footer glass-card">
+        <h3>How did it go?</h3>
+        <p>
+          If you scored below 70%, re-read <strong>Pill 8</strong>, and pick a join you have
+          written in SQL before. Which of the three streaming join types would it become?
+        </p>
+        <div class="pill-footer-links">
+          <a href="/blog/streaming-pill-8-streaming-joins" class="btn btn-secondary btn-sm">Re-read Pill 8</a>
+          <a href="/pills/streaming-quiz-9" class="btn btn-primary btn-sm">Next: Pill 9 Quiz — Three Questions</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .pill-quiz-page {
+    padding: 3.5rem 0 5rem;
+  }
+
+  .back-link {
+    display: inline-block;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.8rem;
+    transition: color 0.2s ease;
+  }
+  .back-link:hover {
+    color: var(--accent-blue);
+  }
+
+  .badge-series {
+    background: var(--accent-blue);
+    color: #ffffff;
+  }
+
+  .pill-header {
+    max-width: 720px;
+    margin-bottom: 2rem;
+  }
+
+  .pill-header h1 {
+    font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+    margin-bottom: 0.8rem;
+    line-height: 1.3;
+  }
+
+  .pill-lead {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+    max-width: 640px;
+  }
+
+  .pill-footer {
+    margin-top: 2.5rem;
+    padding: 2rem;
+    background: var(--bg-card);
+  }
+
+  .pill-footer h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-main);
+  }
+
+  .pill-footer p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.7;
+    margin-bottom: 1.1rem;
+    max-width: 600px;
+  }
+
+  .pill-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+</style>

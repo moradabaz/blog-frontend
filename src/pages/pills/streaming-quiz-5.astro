@@ -1,0 +1,177 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Quiz from '../../components/Quiz.astro';
+
+const questions = [
+  {
+    question: "In the Kinesis + Lambda + S3 + Glue + Athena pattern, what breaks when someone asks for a real-time hourly metric?",
+    options: [
+      "Nothing, this architecture handles real-time aggregates natively",
+      "The pipeline cannot compute it at all, because Lambda has no memory between invocations",
+      "Athena becomes too slow to query",
+      "S3 refuses to store the raw events"
+    ],
+    correct: 1,
+    explanation: "This architecture is built for stateless ingestion. The moment a metric needs memory across events over time, there is nowhere for that memory to live."
+  },
+  {
+    question: "Why can't a Lambda function just remember the last 10 minutes of events on its own?",
+    options: [
+      "Lambda functions are stateless and short-lived, with no shared memory between invocations",
+      "Lambda functions are not allowed to read from Kinesis",
+      "AWS deletes Lambda's memory every hour",
+      "Lambda functions can only run once per day"
+    ],
+    correct: 0,
+    explanation: "Each Lambda invocation starts and terminates with no shared memory to the next one, so it has nothing built in to remember what happened a moment ago."
+  },
+  {
+    question: "At 10,000 events per second, what happens if a Lambda tries to maintain state by reading and writing to an external database on every event?",
+    options: [
+      "Nothing, external databases are built for this exact load",
+      "The database gets overwhelmed by network latency, CPU load, and locking",
+      "The events get automatically batched by AWS for free",
+      "Lambda switches to an in-memory mode automatically"
+    ],
+    correct: 1,
+    explanation: "Round-tripping to a database for every single event at that volume turns the database into the bottleneck, paying network and lock costs just to remember recent history."
+  },
+  {
+    question: "How does a stateful engine like Flink avoid hitting an external database on every event?",
+    options: [
+      "It keeps a high-performance key-value store, typically RocksDB, embedded directly inside the processing node",
+      "It stores all state in S3 instead of a database",
+      "It processes every event twice to be safe",
+      "It disables state entirely and recomputes from scratch each time"
+    ],
+    correct: 0,
+    explanation: "Flink embeds RocksDB inside the processing node itself, so state updates happen locally instead of over the network."
+  },
+  {
+    question: "During a 1-hour tumbling window in Flink, how many network calls does it make to an external reporting database?",
+    options: [
+      "One per incoming event",
+      "Zero, until the window closes, when it makes a single consolidated write",
+      "Exactly 60, one per minute",
+      "It depends on how many partitions the topic has"
+    ],
+    correct: 1,
+    explanation: "While the window is open, Flink updates its local RocksDB counter with no external calls. Only when the window closes does it write once to the reporting layer."
+  },
+  {
+    question: "What kind of workload is serverless still a good fit for, according to this pill?",
+    options: [
+      "Any workload that needs aggregates over a rolling time window",
+      "Stateless, short-lived, request-response work like ingestion, API backends, and file-processing triggers",
+      "Long-running session tracking across days",
+      "Materialized views joining two large tables"
+    ],
+    correct: 1,
+    explanation: "Serverless remains a strong choice exactly where it was designed to work: stateless, event-driven, request-response workloads."
+  }
+];
+---
+
+<BaseLayout
+  title="Quiz: State Is the Bottleneck | Streaming Pill 5"
+  description="Test your understanding of why serverless struggles with state, and how stateful engines like Flink solve it with embedded local storage."
+>
+  <section class="pill-quiz-page">
+    <div class="container">
+      <a href="/blog/streaming-pill-5-state-is-the-bottleneck" class="back-link">← Back to Pill 5</a>
+
+      <div class="pill-header">
+        <div class="badge badge-series" style="margin-bottom: 0.5rem;">Pill 5 · State Bottleneck</div>
+        <h1>Quiz: Where Does the Memory Live?</h1>
+        <p class="pill-lead">
+          These questions test whether you understand why serverless struggles with state, and
+          what a stateful engine does differently, not just that "Flink is better."
+        </p>
+      </div>
+
+      <Quiz
+        title="Pill 5: State Is the Real Bottleneck"
+        questions={questions}
+      />
+
+      <div class="pill-footer glass-card">
+        <h3>How did it go?</h3>
+        <p>
+          If you scored below 70%, re-read <strong>Pill 5</strong>, and picture the two bad
+          options a stateless Lambda has for remembering the last 10 minutes. Which one wastes
+          more, network calls or recomputation?
+        </p>
+        <div class="pill-footer-links">
+          <a href="/blog/streaming-pill-5-state-is-the-bottleneck" class="btn btn-secondary btn-sm">Re-read Pill 5</a>
+          <a href="/pills/streaming-quiz-6" class="btn btn-primary btn-sm">Next: Pill 6 Quiz — Windows</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .pill-quiz-page {
+    padding: 3.5rem 0 5rem;
+  }
+
+  .back-link {
+    display: inline-block;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.8rem;
+    transition: color 0.2s ease;
+  }
+  .back-link:hover {
+    color: var(--accent-blue);
+  }
+
+  .badge-series {
+    background: var(--accent-blue);
+    color: #ffffff;
+  }
+
+  .pill-header {
+    max-width: 720px;
+    margin-bottom: 2rem;
+  }
+
+  .pill-header h1 {
+    font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+    margin-bottom: 0.8rem;
+    line-height: 1.3;
+  }
+
+  .pill-lead {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+    max-width: 640px;
+  }
+
+  .pill-footer {
+    margin-top: 2.5rem;
+    padding: 2rem;
+    background: var(--bg-card);
+  }
+
+  .pill-footer h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-main);
+  }
+
+  .pill-footer p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.7;
+    margin-bottom: 1.1rem;
+    max-width: 600px;
+  }
+
+  .pill-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+</style>

@@ -1,0 +1,56 @@
+---
+interface Props {
+  code: string;
+}
+
+const { code } = Astro.props;
+---
+
+<pre data-language="mermaid"><code set:text={code} /></pre>
+
+<script>
+  const blocks = document.querySelectorAll<HTMLPreElement>('pre[data-language="mermaid"]');
+
+  if (blocks.length) {
+    import('mermaid').then(({ default: mermaid }) => {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: 'neutral',
+        themeVariables: {
+          fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+          primaryColor: '#e0f2fe',
+          primaryBorderColor: '#0284c7',
+          primaryTextColor: '#0f172a',
+          lineColor: '#64748b',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#ffffff'
+        }
+      });
+
+      blocks.forEach((pre, i) => {
+        const diagramCode = pre.querySelector('code')?.textContent ?? '';
+        const container = document.createElement('div');
+        container.className = 'mermaid-diagram';
+        container.id = `mermaid-diagram-${i}-${Math.random().toString(36).slice(2, 8)}`;
+        container.textContent = diagramCode;
+        pre.replaceWith(container);
+      });
+
+      mermaid.run({ querySelector: '.mermaid-diagram' });
+    });
+  }
+</script>
+
+<style>
+  :global(.mermaid-diagram) {
+    display: flex;
+    justify-content: center;
+    overflow-x: auto;
+    padding: 1.25rem 0.5rem;
+  }
+
+  :global(.mermaid-diagram svg) {
+    max-width: 100%;
+    height: auto;
+  }
+</style>

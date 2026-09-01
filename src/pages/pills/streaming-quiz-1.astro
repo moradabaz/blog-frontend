@@ -1,0 +1,176 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Quiz from '../../components/Quiz.astro';
+
+const questions = [
+  {
+    question: "What is the defining trait of a message in the traditional queue paradigm?",
+    options: [
+      "It is an immutable record of something that already happened",
+      "It is a command with direct intent, addressed to one consumer that is expected to act on it and confirm",
+      "It can be read by any number of independent consumers without coordination",
+      "It never needs to be deleted after being processed"
+    ],
+    correct: 1,
+    explanation: "A message is addressed to a specific consumer and expects that consumer to execute an action, GenerateInvoice or SendEmail, and confirm it was done."
+  },
+  {
+    question: "What is the defining trait of an event?",
+    options: [
+      "It is a command telling a specific system what to do next",
+      "It is an immutable, self-contained record of a fact that already happened, published without knowing who will read it",
+      "It always requires an acknowledgment before the producer can continue",
+      "It must be deleted from the log as soon as one consumer reads it"
+    ],
+    correct: 1,
+    explanation: "An event describes a fact, like PaymentCompleted. The producer publishes it without caring who consumes it or how many consumers there are."
+  },
+  {
+    question: "A producer publishes PaymentCompleted. Billing, analytics, and fraud detection all react to it independently. What does this demonstrate?",
+    options: [
+      "Point-to-point coupling between producer and consumer",
+      "Broadcast, decoupled architecture: the producer does not need to know who consumes the event",
+      "That the event is actually a message in disguise",
+      "That the event must be deleted once billing reads it"
+    ],
+    correct: 1,
+    explanation: "Multiple independent systems can react to the same fact without the producer being aware of any of them. That is the broadcast property events give you."
+  },
+  {
+    question: "You see an event named GenerateInvoice in a system. What does this pill say that name reveals?",
+    options: [
+      "Nothing, naming does not matter for events",
+      "That it is likely a command disguised as an event, hinting at hidden point-to-point coupling",
+      "That the event was published by a queue instead of a topic",
+      "That it must be a stream-to-table join"
+    ],
+    correct: 1,
+    explanation: "A verb aimed at a specific system, like GenerateInvoice, reads like a command. If your 'events' are full of these, you have built a distributed RPC system, not a streaming pipeline."
+  },
+  {
+    question: "What breaks first when you add a new consumer to a system built entirely on messages instead of events?",
+    options: [
+      "Nothing breaks, messages scale the same way events do",
+      "The sender usually needs to change, because it has to know who to address the new command to",
+      "The broker automatically discovers the new consumer",
+      "The original consumer stops receiving anything"
+    ],
+    correct: 1,
+    explanation: "Messages create point-to-point dependencies. Adding a consumer to an event-based system just means pointing a new reader at the existing topic, with no change upstream."
+  },
+  {
+    question: "Which naming test does Pill 1 suggest for telling events and messages apart?",
+    options: [
+      "Check if the name reads like a fact that already happened versus a verb aimed at a specific system",
+      "Check whether the payload is JSON or XML",
+      "Check how many bytes the message occupies",
+      "Check whether it was published to Kafka or to S3"
+    ],
+    correct: 0,
+    explanation: "OrderShipped reads like a fact. ChargeCard reads like a command. That distinction, not the transport, is what separates an event from a message."
+  }
+];
+---
+
+<BaseLayout
+  title="Quiz: Events vs Messages | Streaming Pill 1"
+  description="Test your understanding of why an event is a fact and a message is a command, and why the distinction changes system coupling."
+>
+  <section class="pill-quiz-page">
+    <div class="container">
+      <a href="/blog/streaming-pill-1-events-vs-messages" class="back-link">← Back to Pill 1</a>
+
+      <div class="pill-header">
+        <div class="badge badge-series" style="margin-bottom: 0.5rem;">Pill 1 · Events vs Messages</div>
+        <h1>Quiz: Fact or Command?</h1>
+        <p class="pill-lead">
+          These questions test whether you can tell an event from a message by what it does to
+          coupling, not just by which broker carries it.
+        </p>
+      </div>
+
+      <Quiz
+        title="Pill 1: Events Are Not Messages"
+        questions={questions}
+      />
+
+      <div class="pill-footer glass-card">
+        <h3>How did it go?</h3>
+        <p>
+          If you scored below 70%, re-read <strong>Pill 1</strong> and look at the names of
+          events in a system you know. Do any of them read like commands aimed at one consumer?
+        </p>
+        <div class="pill-footer-links">
+          <a href="/blog/streaming-pill-1-events-vs-messages" class="btn btn-secondary btn-sm">Re-read Pill 1</a>
+          <a href="/pills/streaming-quiz-2" class="btn btn-primary btn-sm">Next: Pill 2 Quiz — Two Clocks</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .pill-quiz-page {
+    padding: 3.5rem 0 5rem;
+  }
+
+  .back-link {
+    display: inline-block;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.8rem;
+    transition: color 0.2s ease;
+  }
+  .back-link:hover {
+    color: var(--accent-blue);
+  }
+
+  .badge-series {
+    background: var(--accent-blue);
+    color: #ffffff;
+  }
+
+  .pill-header {
+    max-width: 720px;
+    margin-bottom: 2rem;
+  }
+
+  .pill-header h1 {
+    font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+    margin-bottom: 0.8rem;
+    line-height: 1.3;
+  }
+
+  .pill-lead {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+    max-width: 640px;
+  }
+
+  .pill-footer {
+    margin-top: 2.5rem;
+    padding: 2rem;
+    background: var(--bg-card);
+  }
+
+  .pill-footer h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-main);
+  }
+
+  .pill-footer p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.7;
+    margin-bottom: 1.1rem;
+    max-width: 600px;
+  }
+
+  .pill-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+</style>

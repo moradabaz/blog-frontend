@@ -1,0 +1,177 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Quiz from '../../components/Quiz.astro';
+
+const questions = [
+  {
+    question: "According to Kleppmann's inversion in Designing Data-Intensive Applications, which statement is correct?",
+    options: [
+      "Streaming is a special case of batch, used only when speed matters",
+      "Batch is a special case of streaming: the real world produces a continuous flow of events, and a batch job cuts it at a fixed point in time",
+      "Batch and streaming are two unrelated ways of storing data",
+      "Batch is always more accurate than streaming because it sees more data at once"
+    ],
+    correct: 1,
+    explanation: "Kleppmann's point is that data is inherently continuous and unbounded. A batch job is not a natural unit of work, it is a choice to cut that stream with scissors at a fixed boundary, like 'yesterday', and process the resulting slice as if it were the whole story."
+  },
+  {
+    question: "A batch job that processes 'yesterday's data' is best described as what, in the model this series uses?",
+    options: [
+      "A separate data source from the stream",
+      "A snapshot of the full history of the system",
+      "An arbitrary slice cut out of a continuous, unbounded stream of events",
+      "A queue of messages waiting to be deleted"
+    ],
+    correct: 2,
+    explanation: "The stream itself has no natural start or end. A batch job takes one specific slice of it, bounded by a time window the engineer chose, not one that exists in the data itself."
+  },
+  {
+    question: "Why does thinking of streaming as 'fast batch' lead to bad designs?",
+    options: [
+      "It makes engineers write too much documentation",
+      "It pushes engineers toward batch tools, like a script that runs every few minutes or a database round trip per event, for problems that actually need continuous local state",
+      "It requires buying more expensive hardware",
+      "It has no real consequence, the two models are interchangeable"
+    ],
+    correct: 1,
+    explanation: "Pill 4 and Pill 5 in this series show this in detail: a scheduled script and a stateless function both try to solve a state problem without keeping state, which either breaks correctness or overwhelms an external database."
+  },
+  {
+    question: "Which of these is a consequence of treating a stream as continuous and unbounded, per this pill?",
+    options: [
+      "A window over the stream is a design decision, not something you find already defined in the data",
+      "Every stream must be converted to a batch before it can be queried",
+      "Streaming systems cannot use SQL",
+      "Events must be deleted immediately after being read"
+    ],
+    correct: 0,
+    explanation: "Since the stream never stops, any window (an hour, a day, a session) is a choice about memory, accuracy, and latency. Pill 6 covers this in depth."
+  },
+  {
+    question: "Once an event has happened, what does this series treat it as?",
+    options: [
+      "A draft that can still be edited",
+      "A temporary placeholder until a batch job confirms it",
+      "A fact: immutable, it cannot be changed or deleted afterward",
+      "A message that must be acknowledged and removed by exactly one consumer"
+    ],
+    correct: 2,
+    explanation: "This is the foundation for Pill 1: an event describes something that already happened, so by definition it cannot be undone or rewritten later."
+  },
+  {
+    question: "Which pair of concepts does Pill 0 say the rest of the series builds on top of the batch vs streaming inversion?",
+    options: [
+      "Two clocks (event time and processing time), and windows as a chosen trade-off",
+      "GPU acceleration and columnar storage",
+      "REST APIs and GraphQL schemas",
+      "Data warehouses and star schemas"
+    ],
+    correct: 0,
+    explanation: "Pill 2 covers the two clocks, and Pill 6 covers windows as a design decision. Both are direct consequences of accepting that a stream is continuous and unbounded."
+  }
+];
+---
+
+<BaseLayout
+  title="Quiz: Batch vs Streaming | Streaming Pill 0"
+  description="Test your understanding of Kleppmann's core inversion: batch is a special case of streaming, not the other way around."
+>
+  <section class="pill-quiz-page">
+    <div class="container">
+      <a href="/blog/streaming-pill-0-batch-is-a-special-case" class="back-link">← Back to Pill 0</a>
+
+      <div class="pill-header">
+        <div class="badge badge-series" style="margin-bottom: 0.5rem;">Pill 0 · Batch vs Streaming</div>
+        <h1>Quiz: Is Batch Really the Default?</h1>
+        <p class="pill-lead">
+          These questions test whether you understood the inversion this series is built on,
+          not just whether you can recite the word "unbounded."
+        </p>
+      </div>
+
+      <Quiz
+        title="Pill 0: Batch Is a Special Case of Streaming"
+        questions={questions}
+      />
+
+      <div class="pill-footer glass-card">
+        <h3>How did it go?</h3>
+        <p>
+          If you scored below 70%, re-read <strong>Pill 0</strong>. Try explaining out loud, in
+          one sentence, why a batch job is a slice of a stream and not the other way around. If
+          you can't, that's the gap to close before moving on.
+        </p>
+        <div class="pill-footer-links">
+          <a href="/blog/streaming-pill-0-batch-is-a-special-case" class="btn btn-secondary btn-sm">Re-read Pill 0</a>
+          <a href="/pills/streaming-quiz-1" class="btn btn-primary btn-sm">Next: Pill 1 Quiz — Events vs Messages</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .pill-quiz-page {
+    padding: 3.5rem 0 5rem;
+  }
+
+  .back-link {
+    display: inline-block;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.8rem;
+    transition: color 0.2s ease;
+  }
+  .back-link:hover {
+    color: var(--accent-blue);
+  }
+
+  .badge-series {
+    background: var(--accent-blue);
+    color: #ffffff;
+  }
+
+  .pill-header {
+    max-width: 720px;
+    margin-bottom: 2rem;
+  }
+
+  .pill-header h1 {
+    font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+    margin-bottom: 0.8rem;
+    line-height: 1.3;
+  }
+
+  .pill-lead {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+    max-width: 640px;
+  }
+
+  .pill-footer {
+    margin-top: 2.5rem;
+    padding: 2rem;
+    background: var(--bg-card);
+  }
+
+  .pill-footer h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-main);
+  }
+
+  .pill-footer p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.7;
+    margin-bottom: 1.1rem;
+    max-width: 600px;
+  }
+
+  .pill-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+</style>

@@ -4,11 +4,12 @@ import BlogCard from '../../components/BlogCard.astro';
 import SeriesCard from '../../components/SeriesCard.astro';
 import { getCollection } from 'astro:content';
 
-const posts = await getCollection('blog', ({ data }) => data.category !== 'Spark Pills' && data.category !== 'Semantic Layer Pills');
+const posts = await getCollection('blog', ({ data }) => data.category !== 'Spark Pills' && data.category !== 'Semantic Layer Pills' && data.category !== 'Streaming Pills');
 const sortedPosts = posts.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 
 const sparkPillsCount = (await getCollection('blog', ({ data }) => data.category === 'Spark Pills')).length;
 const semanticLayerPillsCount = (await getCollection('blog', ({ data }) => data.category === 'Semantic Layer Pills')).length;
+const streamingPillsCount = (await getCollection('blog', ({ data }) => data.category === 'Streaming Pills')).length;
 
 // Collect all unique tags across all posts
 const allTags = ['All', ...Array.from(new Set(sortedPosts.flatMap(p => p.data.tags))).sort()];
@@ -67,6 +68,14 @@ const postsData = sortedPosts.map(p => ({
           description="How much context does an LLM actually need to answer SQL questions correctly? A series built from a real dbt project and database: zero context, column descriptions, business logic, routing, and access control."
           count={semanticLayerPillsCount}
           href="/blog/semantic-layer-pills"
+        />
+      </div>
+      <div class="card-wrapper" data-tags={JSON.stringify(['Streaming'])}>
+        <SeriesCard
+          title="Streaming Pills Fundamentals"
+          description="Streaming is not fast batch. A series synthesized from Kleppmann's Designing Data-Intensive Applications: events vs messages, event time, logs vs queues, state, windows, late data, and streaming joins."
+          count={streamingPillsCount}
+          href="/blog/streaming-pills"
         />
       </div>
       {sortedPosts.map(post => (
